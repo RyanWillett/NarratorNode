@@ -2,3 +2,4 @@ src/android/*
 src/shared/*
 src/*.txt
 *.class
+src/nnode/test.java
