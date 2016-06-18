@@ -1,0 +1,152 @@
+<!doctype html>
+<html>
+<head>
+  <meta http-equiv="Content-type" content="text/html; charset=UTF-8" />
+  <title>The Narrator</title>
+  
+  <meta name="description" content="Description" />
+  <meta name="keywords" content="Keywords" />
+  
+  <meta name="author" content="Voss" />
+  
+  <style type="text/css" media="all">@import "css/index.css";</style> 
+</head>
+
+<!--<body background="background.png">-->
+<body>
+  <div id="main" hidden>
+    
+    <nav>
+      <div id="dayLabel">
+        Night 0
+      </div>
+      <div class="info-list-container">
+        <div class="trim info-header">Roles List</div>
+
+        <ul id="rolesList" class ="info-list">
+        </ul>
+      </div>
+      <div class="info-list-container">
+        <div class="trim info-header">Graveyard</div>
+
+        <ul id="graveYard" class ="info-list">
+        </ul>
+      </div>
+
+      <div id='timer'>0:00</div>
+      
+      <button id="logoutButton">Logout</button>
+
+    </nav>
+    <div class="roleCard">
+      <div id = "roleCardHeader" class="trim">Charles (Role)</div>
+      <p>Waiting to start~</p>
+    </div>
+    <div class="targetablesPane">
+      <div class="commandsLabel">
+        <span class="trim" style="text-decoration: underline;">Actions</span><br>
+        <button id="lt">&lt;</button>
+        <span id="commandLabel">Command</span>
+        <button id="gt">&gt;</button>
+      </div>
+      <ul id="selectables">
+      </ul>
+    </div>
+    <ul id="messages">
+
+
+
+    </ul>
+    <button id="theButton" hidden>End Night</button>
+    <form>
+      <!--<button type='button' id="commandTextButton"><b>Command</b> / Chat</button>-->
+      <input id="m" autocomplete="off" placeholder="Enter message here">
+      <button id="herokuSubmit">Send</button>
+    </form>
+
+  </div>
+
+  <div id="setup_page" hidden>
+    <div id='team_catalogue'>
+      <span class='trim'>Categories</span>
+      <ul id='team_catalogue_pane' class='info-list'>
+        <li><span style="color: #6495ed;">Town</span></li>
+        <li><span style="color: #ff0000;">Mafia</span></li>
+        <li><span style="color: #ffd700;">Yakuza</span></li>
+        <li><span style="color: #888888;">Neutrals</span></li>
+        <li>Randoms</li>
+      </ul>
+    </div>
+    <div id='role_catalogue'>
+      <span class='trim'>Available Roles</span>
+      <ul id='role_catalogue_clickable' class='info-list'>
+      </ul>
+      <div id='rules_pane'>
+        <span id='roleDescriptionLabel'></span>
+        <p id='roleDescriptionText'></p>
+        <br>
+        <div id='r0'></div>
+        <div id='r1'></div>
+        <div id='r2'></div>
+        <div id='r3'></div>
+      </div>
+    </div>
+
+    <div id='ingameRolesPane'>
+      <span class='trim centerHeader'>Roles List</span>
+      <ul id='setup_roles_list' class='info-list'>
+      </ul>
+    </div>
+
+    <div id='playerListPane'>
+      <span class='trim centerHeader'>Player List</span>
+      <ul id='setup_players_list' class='info-list'>
+      </ul>
+    </div>
+    
+    <ul id="pregame_messages">
+    </ul>
+    <form>
+      <!--<button type='button' id="commandTextButton"><b>Command</b> / Chat</button>-->
+      <input id="m_setup" autocomplete="off" placeholder="Enter message here">
+      <button id="herokuSubmit_setup">Send</button>
+    </form>
+    <button id='startGameButton'>
+      Start
+    </button>
+    <h3>General Settings</h3>
+    Day Start <input id="dayStartRule" class='general_rules' type='checkbox'><br>
+    Day Length :  <input id="dayLengthRule" class='numberInput general_rules' type='number'> minutes <br>
+    NightLenght : <input id="nightLengthRule" class='numberInput general_rules' type='number'> minutes <br>
+  </div>
+
+
+  <div id="login_page" hidden>
+    <h1>The Narrator</h1>
+    <h2>Mafia</h2>
+    <input id="username_field" type="text" name="u" placeholder="Email" required="required" />
+    <br/>
+    <input id="password_field" type="password" name="p" placeholder="Password" required="required" />
+    <br/>
+    <input id="display_field" type="text" name="d" placeholder="Display Name" required="required" hidden/>
+    <br/>
+    <button id="signup_button" type="submit" class="btn btn-primary btn-block btn-large">Sign up</button>
+    <button id="login_button" type="submit" class="btn btn-primary btn-block btn-large">Let me in.</button>
+    
+  </div>
+
+
+
+
+
+
+
+
+
+
+  
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script src="js/firebase.js"></script>
+  <script src="js/index.js"></script>
+</body>
+</html>
