@@ -242,6 +242,7 @@ J.descriptions = {
 	Mayor: {
 		description: "You are the leader of the town!  At any point during the day, you can reveal yourself and gain extra votes.",
 		rules: [{text: "Vote Power",
+				name: "mayorVote",
 				type: "number"}]
 	},
 	'Serial Killer': {
@@ -477,9 +478,7 @@ function setCatalogue(cata){
 			color = convertColor(e.style.color);
 			
 			setRules(name, color);
-			//if(gameState.host)
-				//removeElement
-			//console.log(color);
+
 			var role_object = JSON.parse(toJString(user, J.addRole));
 			role_object.roleColor = color;
 			role_object.roleName = name;
@@ -531,9 +530,7 @@ function setRolesList(rolesList_o){
 				color = color.split(',');
 
 				color = "#" + hex(color[0]) + hex(color[1]) + hex(color[2]);
-				//if(gameState.host)
-					//removeElement
-				//console.log(color);
+
 				var role_object = JSON.parse(toJString(user, J.removeRole));
 				role_object.roleColor = color;
 				role_object.roleName = name;
@@ -758,12 +755,10 @@ function handleObject(object){
 
 		if(hasType(J.dayLabel, object.type))
 			setDayLabel(object.dayLabel);
-		if(object[J.timer] !== undefined){
-			console.log(object[J.timer]);
+		if(object[J.timer] !== undefined)
 			gameState.timer = object[J.timer];
-		}
+		
 		if(hasType(J.rules, object.type)){
-			console.log('firing');
 			gameState.rules = object.rules;
 			var ele = $('#roleDescriptionLabel');
 			setRules(ele.text(), convertColor(ele.css("color")));

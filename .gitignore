@@ -1,2 +1,4 @@
 src/android/*
 src/shared/*
+src/*.txt
+*.class
