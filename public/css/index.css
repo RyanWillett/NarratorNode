@@ -8,7 +8,7 @@
 }
 @font-face{
 	font-family: headerFont;
-	src: url(AbrilFatface-Regular.ttf);
+	src: url(JosefinSans-Regular.ttf);
 }
 body { 
 	width: 100%; 
@@ -189,10 +189,27 @@ button {
 }
 #messages li { 
 	padding: 5px 10px; 
-	color: white;
+	color: #E8FFFF;
 }
-#messages li:nth-child(odd) { background: rgba(140, 140, 140, 0.2); }
-#messages li:nth-child(even) { background: rgba(140, 156, 140, 0.2); }
+
+#pregame_messages{
+	position: absolute;
+	width: 58%;
+	top: 170px;
+	left: 0;
+	padding-right: 15px;
+	padding-bottom: 50px;
+}
+
+
+.chat li{
+	padding-top: 5px;
+	padding-bottom: 5px;
+	padding-left: 6px;
+	color: #E8FFFF;
+}
+.chat li:nth-child(odd) { background: #131519; }
+.chat li:nth-child(even) { background: #0C090A; }
 
 
 .header{
@@ -288,19 +305,80 @@ h2{
 	font-size: 25px;
 }
 
-#pregame_messages{
-	position: absolute;
-	width: 58%;
-	top: 170px;
-	left: 0;
-	padding-right: 15px;
-	padding-bottom: 50px;
+#global_players_list{
+	color: white;
 }
 
-#pregame_messages li{
+.lobby_buttons{
+	position: fixed;
+	right: 1%;
+	padding-top: 7px;
+	padding-bottom: 7px;
+}
+
+#hostPublicButton{
+	bottom: 160px;
+}
+
+#joinPrivateButton{
+	bottom: 105px;
+}
+#joinButton{
+	margin-right: 3px;
+	bottom: 215px;
+}
+
+#host_name_input{
+	position: fixed;
+	right: 1%;
+	bottom: 55px;
+	width: 8%;
+}
+
+#lobby_messages{
+	background: red;
+	width: 80%;
+	max-width: 80%;
+}
+.lobby_player_header{
+	text-align: center;
+	width: 18%;
+	text-decoration: underline;
+}
+
+#global_players_list{
+	position: relative;
+	max-height: 100%;
+	height: 100%;
+	overflow-y: auto;
+}
+#global_players_list li{
 	padding-top: 3px;
 	padding-bottom: 3px;
-	padding-left: 6px;
+	text-align: right;
+	margin-right: 7px;
 }
-#pregame_messages li:nth-child(odd) { background: rgba(140, 140, 140, 0.2); }
-#pregame_messages li:nth-child(even) { background: rgba(140, 156, 140, 0.2); }
+
+#global_players_menu_pane{
+	position: fixed;
+	right: 1%;
+	height: 60%;
+	max-height: 60%;
+}
+
+::-webkit-input-placeholder { /* WebKit, Blink, Edge */
+    color:    #000000;
+    opacity: 1;
+}
+:-moz-placeholder { /* Mozilla Firefox 4 to 18 */
+   color:    #000000;
+   opacity:  1;
+}
+::-moz-placeholder { /* Mozilla Firefox 19+ */
+   color:    #000000;
+   opacity:  1;
+}
+:-ms-input-placeholder { /* Internet Explorer 10-11 */
+   color:    #000000;
+   opacity:  1;
+}

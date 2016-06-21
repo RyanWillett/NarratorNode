@@ -13,6 +13,8 @@ initFireBase();
 var main = document.getElementById("main");
 var login_page = document.getElementById("login_page");
 var setup_page = document.getElementById("setup_page");
+var lobby_page = document.getElementById("lobby_page");
+
 var user = null;
 var gameState={};
 gameState.started = false;
@@ -58,6 +60,9 @@ J.timer = "timer";
 J.rules = "rules";
 J.ruleChange = "ruleChange";
 
+J.skipVote = "skipVote";
+J.isSkipping = "isSkipping";
+
 J.TOWN = "#6495ED";
 J.MAFIA = "#FF0000";
 J.YAKUZA = "#FFD700";
@@ -101,8 +106,8 @@ J.catalogue = {
 		{name: 'Arsonist',      color: "#FF8C00"},
 		{name: 'Mass Murderer', color: "#CD853E"},
 		{name: 'Witch',         color: "#666600"},
-		{name: 'Cultist',       color: "#00FF00"},
-		{name: 'Cult Leader',   color: "#00FF00"},
+		{name: 'Cultist',       color: "#D5E68C"},
+		{name: 'Cult Leader',   color: "#D5E68C"},
 		{name: 'Jester',        color: "#DDA0DD"},
 		{name: 'Executioner',   color: "#DDA0DD"}
 	],
@@ -323,19 +328,25 @@ function addToChat(message){
 	var toAppend = message.replace('\n', '');
 	var element;
 	var texts;
-	if(gameState.started){
+	if($("#lobby_page").is(":visible")){
+		element = $('#lobby_messages');
+	}else if(gameState.started){
 		element = $('#messages');
-	}
-	else
+	}else{
 		element = $('#pregame_messages');
+	}
 	element.append($('<li>').html(toAppend));
 
-	if(gameState.started){
+	if($("#lobby_page").is(":visible")){
+		texts = $('#lobby_messages li').length - 1;
+	}else if(gameState.started){
 		texts = $('#messages li').length - 1;
 	}else{
 		texts = $('#pregame_messages li').length - 1;
 	}
-	if(gameState.started)
+	if($("#lobby_page").is(":visible")){
+		$('#lobby_messages li')[texts].scrollIntoView();
+	}else if(gameState.started)
 		$('#messages li')[texts].scrollIntoView();
 	else
 		$('#pregame_messages li')[texts].scrollIntoView();
@@ -343,7 +354,12 @@ function addToChat(message){
 
 
 var socket = null;
-$('form').submit(function(){
+function web_send(o){
+	o.email = user.email;
+	o.name  = user.displayName;
+	socket.send(JSON.stringify(o));
+}
+$('form').submit(function(event){
 	if (socket !== null)
 		return false;
 	else
@@ -353,9 +369,10 @@ $('form').submit(function(){
 });
 
 function sendRules(){
-	var toSend = JSON.parse(toJString(user, J.ruleChange));
+	var toSend = {};
+	toSend.message = J.ruleChange;
 	toSend[J.ruleChange] = gameState.rules;
-	socket.send(JSON.stringify(toSend));
+	web_send(toSend);
 }
 
 function onRuleClickChange(e){
@@ -387,9 +404,9 @@ function onRuleValueChange(e){
 function setRegularRules(){
 	$(".general_rules").unbind();
 	$(".general_rules").prop('disabled', !gameState.isHost);
-	$("#dayStartRule").prop('checked', gameState.rules["dayStart"]);
-	$("#nightLengthRule").val(gameState.rules["nightLength"]);
-	$("#dayLengthRule").val(gameState.rules["dayLength"]);
+	$("#dayStartRule").prop('checked', gameState.rules.dayStart);
+	$("#nightLengthRule").val(gameState.rules.nightLength);
+	$("#dayLengthRule").val(gameState.rules.dayLength);
 
 	if(!gameState.isHost)
 		return;
@@ -479,12 +496,13 @@ function setCatalogue(cata){
 			
 			setRules(name, color);
 
-			var role_object = JSON.parse(toJString(user, J.addRole));
+			var role_object = {};
+			role_object.message = J.addRole;
 			role_object.roleColor = color;
 			role_object.roleName = name;
-			role_object = JSON.stringify(role_object);
+			
 			if(gameState.isHost)
-				socket.send(role_object);
+				web_send(role_object);
 		});
 	}
 }
@@ -531,11 +549,11 @@ function setRolesList(rolesList_o){
 
 				color = "#" + hex(color[0]) + hex(color[1]) + hex(color[2]);
 
-				var role_object = JSON.parse(toJString(user, J.removeRole));
+				var role_object = {};
+				role_object.message = J.removeRole;
 				role_object.roleColor = color;
 				role_object.roleName = name;
-				role_object = JSON.stringify(role_object);
-				socket.send(role_object);
+				web_send(role_object);
 			});
 		}
 	}
@@ -559,7 +577,7 @@ function refreshPlayers(){
 	var playerListType = playerLists[J.type][gameState.commandsIndex % playerLists[J.type].length];
 	gameState.visiblePlayers = playerLists[playerListType];
 	if(gameState.isDay)
-		gameState.visiblePlayers.push("Skip Day");
+		gameState.visiblePlayers.push({playerName:"Skip Day", playerActive: true, playerVote: gameState.skipVote, playerSelected: gameState.isSkipping});
 	$('#commandLabel').html(playerListType);
 	
 	var selectables;
@@ -571,16 +589,27 @@ function refreshPlayers(){
 		selectables = $('#setup_players_list');
 	}
 	
-	var li, text;
+	var li, text, player;
 	selectables.empty();
 	for(var i = 0; i < gameState.visiblePlayers.length; i++){
-		text = '<li>'+radioText+gameState.visiblePlayers[i];
-		if(!gameState.started && gameState.visiblePlayers[i] === gameState.host){
+		player = gameState.visiblePlayers[i];
+		text = '<li name="' + player.playerName + '">'+radioText;
+		if(player.playerActive){
+			text += player.playerName;
+		}else{
+			text += "-" + player.playerName;
+		}
+		
+		if(!gameState.started && player.playerName === gameState.host){
 			text += " (Host)";
+		}else if(gameState.isDay){
+			text += ("<span style='float:right;'> (" + player.playerVote + ")</span>");
 		}
 
 		text += '</li>';
 		li = $(text);
+		if(gameState.started)
+			li.find(">:first-child").prop('checked', player.playerSelected);
 		li.appendTo(selectables);
 	}
 
@@ -592,7 +621,8 @@ function refreshPlayers(){
 }
 
 function setMultiCommandButtons(){
-	if(gameState.playerLists[J.type].length < 2){
+	var len = gameState.playerLists[J.type].length;
+	if(len < 2){
 		$('#lt').hide();
 		$('#gt').hide();
 	}else{
@@ -600,15 +630,13 @@ function setMultiCommandButtons(){
 		var gt = $('#gt');
 		lt.show();
 		gt.show();
-		var len = gameState.playerLists[J.type].length;
 		lt.click(function(){
-			gameState.commandsIndex -= 1;
-			gameState.commandsIndex %= len;
+			gameState.commandsIndex = (gameState.commandsIndex + len - 1) % len;
 			refreshPlayers();
 		});
 		gt.click(function(){
-			gameState.commandsIndex += 1;
-			gameState.commandsIndex %= len;
+			gameState.commandsIndex = (gameState.commandsIndex + 1) % len;
+		
 			refreshPlayers();
 		});
 	}
@@ -617,12 +645,11 @@ function setMultiCommandButtons(){
 function filterRadio(event){
 	return onRadioClick(event.target);
 }
-
 function onRadioClick(e){
 	var checked = e.checked;
-	$('.radios').prop('checked', false);
-	var name = e.parentElement.textContent;
-	e.checked = checked;
+	
+	var name = e.parentElement.getAttribute('name');
+	
 	
 	var command = $('#commandLabel').text();
 
@@ -637,7 +664,7 @@ function onRadioClick(e){
 		if(command === "Vote" && name == "Skip Day")
 			message = "skip day";
 	}
-	socket.send(toJString(user, message));
+	web_send({message: message});
 }
 
 
@@ -712,11 +739,30 @@ function setHost(bool){
 	$(".general_rules").prop('disabled', !gameState.isHost);
 }
 
+function setGlobalPlayerList(players){
+	var pList = $("#global_players_list");
+	pList.empty();
+	for(var i = 0; i < players.length; i++){
+		pList.append("<li>" + players[i]+"</li>");
+	}
+}
+
 function hasType(key, type){
 	return (type.indexOf(key) >= 0);
 }
 function handleObject(object){
-	if(object.guiUpdate){
+	if(object.lobbyUpdate){
+		if(object.playerList !== undefined){
+			setGlobalPlayerList(object.playerList);
+			return;
+		}
+		main.hidden = true;
+		setup_page.hidden = true;
+		lobby_page.hidden = false;
+		for(var i = 0; i < object.message.length; i++){
+			addToChat(object.message[i]);
+		}
+	}else if(object.guiUpdate){
 		gameObject = object;
 		if(object[J.gameStart] !== undefined){
 			gameState.started = object[J.gameStart];
@@ -727,6 +773,7 @@ function handleObject(object){
 				main.hidden = true;
 				setup_page.hidden = false;
 			}
+			lobby_page.hidden = true;
 		}
 		if(object[J.host] !== undefined){
 			gameState.host = object[J.host];
@@ -744,6 +791,10 @@ function handleObject(object){
 		if(object[J.showButton] !== undefined)
 			showButton(object[J.showButton]);
 
+		if(object[J.skipVote] !== undefined){
+			gameState.skipVote = object[J.skipVote];
+			gameState.isSkipping = object[J.isSkipping];
+		}
 		if(hasType(J.playerList, object.type))
 			setLivePlayers(object.playerLists);
 
@@ -768,6 +819,16 @@ function handleObject(object){
 
 		
 	}else{	
+		if(object.chatReset){
+
+			var element;
+			if(gameState.started)
+				element = $('#messages');
+			else
+				element = $('#pregame_messages');
+			
+			element.empty();
+		}
 		var splits = object.message.split('\n');
 		for (var i = 0; i < splits.length; i++){
 			addToChat(splits[i]);
@@ -775,31 +836,52 @@ function handleObject(object){
 	}
 }
 
+function host_submit(){
+	var inp = $("#host_name_input");
+	var o = {};
+	o.action = true;
+	o.message = "joinPrivate";
+	o.hostName = inp.val();
+	web_send(o);
+	inp.val('');
+	return false;
+}
+
 firebase.auth().onAuthStateChanged(function(user_o){
 	if(user_o && user === null){//to ensure that we're not initiating a websocket a million times
 		user = user_o;
 		$("#roleCardHeader").html(user.displayName);
-		main.hidden = false;
 		var host = location.origin.replace(/^http/, 'ws');
 		var ws = new WebSocket(host);
 
-		$('form').submit(function(){
-			var team;
-			var m;
-			if(gameState.started){
-				team = gameState.role.team;
-				m = $('#m');
+		$('form').submit(function(e){
+			e = e.target.childNodes[0];
+			if(e.id === 'host_name_input')
+				return host_submit();
+
+			var team, m, message;
+			if($("#lobby_page").is(":visible")){
+				m = $("#m_lobby");
+				message = m.val();
 			}else{
-				team = null;
-				m = $('#m_setup');
+				if(gameState.started){
+					team = gameState.role.roleColor;
+					m = $('#m');
+				}else{
+					team = null;
+					m = $('#m_setup');
+				}
+				message = 'say ' + team + ' ' + m.val();
 			}
-			
 			
 			if(m.val().length === 0)
 				return false;
 
-			var message = 'say ' + team + ' ' + m.val();
+			
 			var text = toJString(user_o, message);
+			var o = JSON.parse(text);
+			o.action = false;
+			text = JSON.stringify(o);
 			ws.send( text );
 			m.val('');
 			return false;
@@ -807,18 +889,20 @@ firebase.auth().onAuthStateChanged(function(user_o){
 
 		ws.onmessage = (function(msg){
 			handleObject(JSON.parse(msg.data));
+			$("#newChatMessageAudio")[0].play();
 		});
 
 		ws.onopen = (function(){
+			console.log('websocket client opened');
 			socket = ws;
-			function keepAlive(){
-				ws.send(toJString(user, J.requestGameState));
-			}
-			keepAlive();
-			setCatalogue(J.catalogue.town);
+			ws.send(toJString(user, "greeting"));
 			setTimer();
-			ws.send(toJString(user, J.requestChat));
-			//setTimeout(keepAlive, 40000);
+			/*THIS THIS
+			
+			
+			setCatalogue(J.catalogue.town);
+			
+			ws.send(toJString(user, J.requestChat)); */
 		});
 		ws.onclose = (function(){
 			$('#messages').append($('<li>').text("Connection with server terminated"));
@@ -831,12 +915,12 @@ firebase.auth().onAuthStateChanged(function(user_o){
 
 			}else if(gameState.isDay){
 				if(gameState.role.roleName === 'Mayor'){
-					socket.send(toJString(user, 'reveal'));
+					web_send({message: 'reveal'});
 				}else{
-					socket.send(toJString(user, 'burn'));
+					web_send({message: 'burn'});
 				}
 			}else{
-				socket.send(toJString(user, 'end night'));
+				web_send({message: 'end night'});
 				gameState.endedNight = !gameState.endedNight;
 				if(gameState.endedNight){
 					button.text('Cancel End Night');
@@ -848,7 +932,7 @@ firebase.auth().onAuthStateChanged(function(user_o){
 		});
 		$("#startGameButton").on("click", function(){
 			if(gameState.isHost){
-				socket.send(toJString(user, J.startGame));
+				web_send({message: J.startGame});
 			}
 		});
 
@@ -927,5 +1011,17 @@ $(document).ready(function(){
 		}
 		setCatalogue(catalog);
 	});
-
+	$(".lobby_buttons").unbind();
+	$("#joinButton").click(function(){
+		var o = {};
+		o.action = true;
+		o.message = "joinPublic";
+		web_send(o);
+	});
+	$("#hostPublicButton").click(function(){
+		var o = {};
+		o.action = true;
+		o.message = "hostPublic";
+		web_send(o);
+	});
 });

@@ -52,9 +52,7 @@
       <ul id="selectables">
       </ul>
     </div>
-    <ul id="messages">
-
-
+    <ul class='chat' id="messages">
 
     </ul>
     <button id="theButton" hidden>End Night</button>
@@ -104,7 +102,7 @@
       </ul>
     </div>
     
-    <ul id="pregame_messages">
+    <ul class='chat' id="pregame_messages">
     </ul>
     <form>
       <!--<button type='button' id="commandTextButton"><b>Command</b> / Chat</button>-->
@@ -120,6 +118,25 @@
     NightLenght : <input id="nightLengthRule" class='numberInput general_rules' type='number'> minutes <br>
   </div>
 
+  <div id="lobby_page" hidden>
+    <div id="global_players_menu_pane">
+      <span class="trim lobby_player_header">Global Chat</span>
+      <ul id="global_players_list">
+      
+      </ul>
+    </div>
+    <button id="joinButton" class='lobby_buttons'>Join Public</button>
+    <button id="joinPrivateButton" class='lobby_buttons'>Join Private</button>
+    <button id="hostPublicButton" class='lobby_buttons'>Host Public</button>
+    <form><input id='host_name_input' placeholder='host name' input="text"></form>
+    <ul class='chat' id="lobby_messages">
+    </ul>
+    <form>
+      <!--<button type='button' id="commandTextButton"><b>Command</b> / Chat</button>-->
+      <input id="m_lobby" autocomplete="off" placeholder="Enter message here">
+      <button id="herokuSubmit_setup">Send</button>
+    </form>
+  </div>
 
   <div id="login_page" hidden>
     <h1>The Narrator</h1>
@@ -148,5 +165,6 @@
   <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
   <script src="js/firebase.js"></script>
   <script src="js/index.js"></script>
+  <audio hidden id="newChatMessageAudio" src="hearbeat.mp3"></audio>
 </body>
 </html>

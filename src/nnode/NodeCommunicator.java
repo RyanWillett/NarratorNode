@@ -3,7 +3,7 @@ package nnode;
 import json.JSONException;
 import json.JSONObject;
 import shared.event.Event;
-import shared.logic.Player;
+import shared.event.EventList;
 import shared.logic.support.Communicator;
 import shared.logic.support.CommunicatorHandler;
 import shared.packaging.Packager;
@@ -12,22 +12,38 @@ import shared.packaging.Packager;
 
 public class NodeCommunicator extends Communicator{
     	
-	NodeController nc;
-	public NodeCommunicator(NodeController nc){
+	NodeSwitch nc;
+	NodePlayer np;
+	public NodeCommunicator(NodeSwitch nc, NodePlayer np){
 		this.nc = nc;
+		this.np = np;
+	}
+	
+	public static JSONObject getJObject(String completedMessage) throws JSONException{
+		JSONObject j = new JSONObject();
+		j.put("message", completedMessage);
+		j.put("server", false);
+		return j;
+	}
+	
+	public void sendToNC(String completedMessage){
+		if(nc != null){
+			try{
+				JSONObject j = getJObject(completedMessage);
+				nc.write(np, j);
+			}catch(JSONException e){}
+		}
 	}
 	public void sendMessage(Event f) {
-		Player p = getPlayer();
-		JSONObject j = new JSONObject();
-		try {
-			j.put("message", f.access(p, true));
-			j.put("server", false);
-			String email = nc.rPhoneBook.get(p.getName());
-			if(nc != null)
-				nc.write(email, j);
-		} catch (JSONException e) {
-			e.printStackTrace();
+		sendToNC(f.access(getPlayer(), true));
+		
+	}
+	public void sendMessage(EventList eList){
+		StringBuilder sb = new StringBuilder();
+		for(Event e: eList){
+			sb.append(e.access(getPlayer().getName(), true) + "\n");
 		}
+		sendToNC(sb.toString());
 	}
 	public void writeToParcel(Packager p, CommunicatorHandler ch) {
 

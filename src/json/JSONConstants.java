@@ -41,6 +41,14 @@ public class JSONConstants {
 	public static final String rules = "rules";
 	public static final String ruleChange = "ruleChange";
 
+	public static final String playerName = "playerName";
+	public static final String playerIndex = "playerIndex";
+	public static final String playerVote = "playerVote";
+	public static final String skipVote = "skipVote";
+	public static final String playerSelected = "playerSelected";
+	public static final String isSkipping = "isSkipping";
+	public static final String playerActive = "playerActive";
+
 
 
 

@@ -1,6 +1,7 @@
 var exec = require('child_process').exec;
 var fs = require('fs');
 const NARRATOR = "Narrator";
+const READ_JAVA_OUTPUT = false;
 
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
@@ -96,7 +97,7 @@ console.log("websocket server created");
 
 
 function web_send(name, message){
-  //console.log('sending web message to ' + name + " : " + message);
+  console.log('sending web message to ' + name + " : " + message);
   var c = connections_mapping[name];
   //console.log(connections_mapping.length);
   if (c!== undefined)
@@ -134,39 +135,40 @@ wss.on("connection", function(ws) {
     //console.log('web -> heroku : ' + message);
     try{
       o = JSON.parse(message);
-      var prevMessage = o.message;
 
       
       if (!(o.email in connections_mapping)){
-        o.message = 'addplayer';
+        console.log(o.email);
+        //o.message = 'greeting';  message should already be greeting
         o.server = true;     
         pipe_write(JSON.stringify(o));
+        connections_mapping[o.email] = ws;
+        return;
       }
-      else if(connections_mapping[o.email] != ws){
+      if(connections_mapping[o.email] != ws){
         connections_mapping[o.email].close();
       }
       connections_mapping[o.email] = ws;
 
-      if(prevMessage.length !== 0){
-        var submitted = pipe_write(message);
-        if (!submitted){
-          web_send(o.email, message);
-        //  web_send_all(message);
-        }
+      if(o.message.length !== 0){
+        pipe_write(message);
       }
     }catch(f){
       console.log("message that caused error : " + message);
       console.log(f);
     }
-    
   });
 
   ws.on("close", function() {
     var i;
     for (i in connections_mapping){
-      //todo set inactive
     	if (connections_mapping[i] === ws){
         console.log("websocket connection with " + i + " close");
+        o = {};
+        o.server = true;
+        o.message = 'disconnect';
+        o.email = i;
+        pipe_write(JSON.stringify(o));
         delete connections_mapping[i];
         break;
       }
@@ -231,12 +233,13 @@ function connectClient(){
 
 function runJava(){
   console.log('running java prog');
-  setTimeout(connectClient, 4000);
+  setTimeout(connectClient, 3000);
   var spawn = require('child_process').spawn
-  java = spawn("java", ["nnode/NodeController"], {cwd: 'src'});
+  java = spawn("java", ["nnode/NodeSwitch"], {cwd: 'src'});
   java.stdout.on('data', function(data){
     //console.log('(java) : ' + data);
-    console.log(data.toString());
+    if(READ_JAVA_OUTPUT)
+      console.log(data.toString());
   });
   java.stderr.on('data', function(data){
     console.log('(javaErr) : ' + data);
@@ -248,4 +251,4 @@ function runJava(){
 
 
 
-compile_file(['nnode/NodeController.java'], 0, runJava);
+compile_file(['nnode/NodeSwitch.java'], 0, runJava);
