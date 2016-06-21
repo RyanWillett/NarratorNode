@@ -464,21 +464,26 @@ public class Instance implements NarratorListener{
 	public void onGameStart() {
 		startTimer();
 		sendGameState();
+		resetChat();
 	}
 
+	protected void resetChat(Player p){
+		StringBuilder sb = new StringBuilder();
+		for(Event e: p.getEvents()){
+			sb.append(e.access(p.getName(), true) + "\n");
+		}
+		try {
+			JSONObject jo = NodeCommunicator.getJObject(sb.toString());
+			jo.put("chatReset", true);
+			nc.write(phoneBook.get(p), jo);
+		} catch (JSONException e1) {
+			e1.printStackTrace();
+		}
+	}
+	
 	private void resetChat(){
 		for(Player p: n.getAllPlayers()){
-			StringBuilder sb = new StringBuilder();
-			for(Event e: p.getEvents()){
-				sb.append(e.access(p.getName(), true) + "\n");
-			}
-			try {
-				JSONObject jo = NodeCommunicator.getJObject(sb.toString());
-				jo.put("chatReset", true);
-				nc.write(phoneBook.get(p), jo);
-			} catch (JSONException e1) {
-				e1.printStackTrace();
-			}
+			resetChat(p);
 		}
 			
 	}

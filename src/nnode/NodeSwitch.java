@@ -183,10 +183,10 @@ public class NodeSwitch implements TextInput{
 			String name = jo.getString("name");
 			np = addNodePlayer(email, name);
 		}
-		np.setActive();
 		Instance inst;
     	switch(jo.getString("message")){
     	case "greeting":
+			np.setActive();
     		if(np.isInLobby()){
         		jo.put("lobbyUpdate", true);
         		JSONArray jMessages = new JSONArray();
@@ -201,6 +201,7 @@ public class NodeSwitch implements TextInput{
     			return;
     		}else{
     			np.inst.sendGameState(np.player);
+    			np.inst.resetChat(np.player);
     		}
     		break;
     	
@@ -209,7 +210,7 @@ public class NodeSwitch implements TextInput{
     			ePhoneBook.remove(np.email);
     			removePlayerFromLobby(np);
     		}else{
-    			if(!np.inst.n.isInProgress())
+    			if(!np.inst.n.isInProgress() && np.inst.n.isStarted())
         			ePhoneBook.remove(np.email);
     		}
     		np.setInactive();

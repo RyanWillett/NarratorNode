@@ -889,7 +889,7 @@ firebase.auth().onAuthStateChanged(function(user_o){
 
 		ws.onmessage = (function(msg){
 			handleObject(JSON.parse(msg.data));
-			$("#newChatMessageAudio")[0].play();
+			//$("#newChatMessageAudio")[0].play();
 		});
 
 		ws.onopen = (function(){

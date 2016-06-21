@@ -2,6 +2,12 @@ var exec = require('child_process').exec;
 var fs = require('fs');
 const NARRATOR = "Narrator";
 const READ_JAVA_OUTPUT = false;
+const LOG_CLIENT_OUTPUT = false;
+
+/*firebase.initializeApp({
+  serviceAccount: "Narrator-1c6d40c23a30.json",
+  databaseURL: "https://narrator-119be.firebaseio.com"
+});*/
 
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
@@ -97,7 +103,8 @@ console.log("websocket server created");
 
 
 function web_send(name, message){
-  console.log('sending web message to ' + name + " : " + message);
+  if(LOG_CLIENT_OUTPUT)
+    console.log('sending web message to ' + name + " : " + message);
   var c = connections_mapping[name];
   //console.log(connections_mapping.length);
   if (c!== undefined)
@@ -138,7 +145,6 @@ wss.on("connection", function(ws) {
 
       
       if (!(o.email in connections_mapping)){
-        console.log(o.email);
         //o.message = 'greeting';  message should already be greeting
         o.server = true;     
         pipe_write(JSON.stringify(o));
