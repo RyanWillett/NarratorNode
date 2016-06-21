@@ -152,7 +152,7 @@ public class NodeSwitch implements TextInput{
     //ensured that name isn't in the books yet
     
     
-    private void onLobbyListChange() throws JSONException{
+    void onLobbyListChange() throws JSONException{
     	JSONObject jo = new JSONObject();
 		jo.put("lobbyUpdate", true);
 		
@@ -169,12 +169,26 @@ public class NodeSwitch implements TextInput{
     private NodePlayer addNodePlayer(String email, String name) throws JSONException{
     	NodePlayer np = new NodePlayer(email, name, this); 
 		ePhoneBook.put(email, np);
-		lobbyList.add(np);
-		
-		onLobbyListChange();
     	
     	return np;
     }
+    
+    public void joinLobby(NodePlayer np) throws JSONException {
+		lobbyList.add(np);
+		onLobbyListChange();
+
+		JSONObject jo = new JSONObject();
+		jo.put("lobbyUpdate", true);
+		JSONArray jMessages = new JSONArray();
+		for (LobbyMessage message: lobbyMessages){
+			jMessages.put(message.access(np));
+		}
+		jo.put("message", jMessages);
+		jo.remove("server");
+		jo.put("reset", true);
+		jo.put("sever", false);
+		write(np, jo);
+	}
     
     public void handleServerMessage(JSONObject jo) throws JSONException{
 		String email = jo.getString("email");
@@ -183,21 +197,12 @@ public class NodeSwitch implements TextInput{
 			String name = jo.getString("name");
 			np = addNodePlayer(email, name);
 		}
-		Instance inst;
     	switch(jo.getString("message")){
     	case "greeting":
 			np.setActive();
     		if(np.isInLobby()){
-        		jo.put("lobbyUpdate", true);
-        		JSONArray jMessages = new JSONArray();
+        		joinLobby(np);
         		
-        		for (LobbyMessage message: lobbyMessages){
-        			jMessages.put(message.access(np));
-        		}
-        		jo.put("message", jMessages);
-        		jo.remove("server");
-        		jo.put("sever", false);
-    			write(email, jo);
     			return;
     		}else{
     			np.inst.sendGameState(np.player);
@@ -292,4 +297,6 @@ public class NodeSwitch implements TextInput{
 	public void text(Player p, String message, boolean sync) {
 		
 	}
+
+	
 }

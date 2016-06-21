@@ -473,6 +473,32 @@ function convertColor(color){
 	return "#" + hex(color[0]) + hex(color[1]) + hex(color[2]);
 }
 
+function getMemberFromClick(e){
+	var obj = {}
+	obj.name = e.innerHTML;
+	obj.color = convertColor(e.style.color);
+	return obj;
+}
+
+function addRole(name, color){
+	var role_object = {};
+	role_object.message = J.addRole;
+	role_object.roleColor = color;
+	role_object.roleName = name;
+	
+	if(gameState.isHost)
+		web_send(role_object);
+}
+
+function removeRole(name, color){
+	var role_object = {};
+	role_object.message = J.removeRole;
+	role_object.roleColor = color;
+	role_object.roleName = name;
+	if(gameState.isHost)
+		web_send(role_object);
+}
+
 function setCatalogue(cata){
 	$("#rules_pane").hide();
 	var pane = $("#role_catalogue_clickable");
@@ -488,21 +514,15 @@ function setCatalogue(cata){
 	}
 	if(!gameState.started){
 		pane.unbind();
-		pane.on("click", "li", function(e){
-			e = e.target;
-			my_ele = e;
-			var name = e.innerHTML;
-			color = convertColor(e.style.color);
+		pane.on("click", "li", function (e){
+			var obj = getMemberFromClick(e.target);
+			setRules(obj.name, obj.color);
+		});
+		pane.on("dblclick", "li", function(e){
+			var memb = getMemberFromClick(e.target);
 			
-			setRules(name, color);
-
-			var role_object = {};
-			role_object.message = J.addRole;
-			role_object.roleColor = color;
-			role_object.roleName = name;
-			
-			if(gameState.isHost)
-				web_send(role_object);
+			setRules(memb.name, memb.color);
+			addRole(memb.name, memb.color);
 		});
 	}
 }
@@ -536,24 +556,14 @@ function setRolesList(rolesList_o){
 		$('#ingameRolesPane span').text("Roles List (" + rolesList_o.length + ")");
 		if(gameState.isHost){
 			rolesList.unbind();
+			rolesList.on("dblclick", ".pregame_li", function(e){
+				var memb = getMemberFromClick(e.target);
+				setRules(memb.name, memb.color);
+				removeRole(memb.name, memb.color);
+			});
 			rolesList.on("click", ".pregame_li", function(e){
-				e = e.target;
-				my_ele = e;
-				var name = e.innerHTML;
-				color = e.style.color;
-				color = color.replace(" ", "");
-				color = color.replace(" ", "");
-				color = color.replace("rgb(", "");
-				color = color.replace(")", "");
-				color = color.split(',');
-
-				color = "#" + hex(color[0]) + hex(color[1]) + hex(color[2]);
-
-				var role_object = {};
-				role_object.message = J.removeRole;
-				role_object.roleColor = color;
-				role_object.roleName = name;
-				web_send(role_object);
+				var memb = getMemberFromClick(e.target);
+				setRules(memb.name, memb.color);
 			});
 		}
 	}
@@ -732,11 +742,38 @@ function setRoleInfo(roleInfo){
 
 function setHost(bool){
 	gameState.isHost = bool;
-	if(!bool)
-		$("#startGameButton").hide();
-	else
-		$("#startGameButton").show();
+	var startButton;
+	var leaveButton;
+	if(gameState.isHost){
+		startButton = $("#setupButtonB");
+		leaveButton = $("#setupButtonA");
+		startButton.show();
+	}
+	else{
+		leaveButton = $("#setupButtonB");
+		startButton = $("#setupButtonA");
+		startButton.hide();
+	}
+	startButton.unbind();
+	leaveButton.unbind();
+	leaveButton.show();
+
+	leaveButton.text('Leave');
+	startButton.text("Start");
+
+	leaveButton.css('color', "#DA340D");
+	startButton.css('color', '#159C0B');
+
 	$(".general_rules").prop('disabled', !gameState.isHost);
+
+
+	startButton.on("click", function(){
+		if(gameState.isHost)
+			web_send({message: J.startGame});	
+	});
+	leaveButton.on("click", function(){
+		web_send({message: "leaveGame"});
+	});
 }
 
 function setGlobalPlayerList(players){
@@ -759,6 +796,8 @@ function handleObject(object){
 		main.hidden = true;
 		setup_page.hidden = true;
 		lobby_page.hidden = false;
+		if(object.reset)
+			$("#lobby_messages").empty();
 		for(var i = 0; i < object.message.length; i++){
 			addToChat(object.message[i]);
 		}
@@ -815,6 +854,10 @@ function handleObject(object){
 			setRules(ele.text(), convertColor(ele.css("color")));
 		}
 
+		if(object.ping !== undefined){
+			$("#ping")[0].play();
+		}
+
 
 
 		
@@ -868,7 +911,7 @@ firebase.auth().onAuthStateChanged(function(user_o){
 					team = gameState.role.roleColor;
 					m = $('#m');
 				}else{
-					team = null;
+					team = "null";
 					m = $('#m_setup');
 				}
 				message = 'say ' + team + ' ' + m.val();
@@ -889,7 +932,8 @@ firebase.auth().onAuthStateChanged(function(user_o){
 
 		ws.onmessage = (function(msg){
 			handleObject(JSON.parse(msg.data));
-			//$("#newChatMessageAudio")[0].play();
+			if(user.displayName === "Voss")
+				$("#newChatMessageAudio")[0].play();
 		});
 
 		ws.onopen = (function(){
@@ -930,11 +974,7 @@ firebase.auth().onAuthStateChanged(function(user_o){
 
 
 		});
-		$("#startGameButton").on("click", function(){
-			if(gameState.isHost){
-				web_send({message: J.startGame});
-			}
-		});
+		
 
 	}else if (user_o === null){
 		login_page.hidden = false;

@@ -298,11 +298,26 @@ h2{
 	max-height: 100%;
 }
 
-#startGameButton{
+#setupButtonA{
+	position: fixed;
+	bottom: 55px;
+	right: 13%;
+	font-size: 25px;
+	width: 11%;
+	height: 40px;
+	padding-right: 7px;
+	padding-left: 7px;
+}
+
+#setupButtonB{
 	position: fixed;
 	bottom: 55px;
 	right: 5px;
 	font-size: 25px;
+	width: 11%;
+	height: 40px;
+	padding-right: 7px;
+	padding-left: 7px;
 }
 
 #global_players_list{

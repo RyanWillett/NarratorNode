@@ -1,6 +1,7 @@
 package nnode;
 
 import json.JSONArray;
+import json.JSONConstants;
 import json.JSONException;
 import json.JSONObject;
 import shared.logic.Player;
@@ -82,6 +83,30 @@ public class NodePlayer {
 		jArray.put(string);
 		jo.put("message", jArray);
 		nc.write(this, jo);
+	}
+
+	public void leaveGame() throws JSONException {
+		inst.removePlayer(this);
+		inst = null;
+		nc.joinLobby(this);
+		nc.onLobbyListChange();
+	}
+
+	private static final long MINUTE = 60000; 
+	private long lastPinged = -1;
+	public void ping(NodePlayer requester) throws JSONException {
+		long currentTime = System.currentTimeMillis();
+		JSONObject jo;
+		if(currentTime - lastPinged < 2 * MINUTE){
+			jo = new JSONObject();
+			jo.put("message", name + " cannot be pinged again so soon.");
+			requester.write(jo);
+		}else{
+			jo = Instance.GetGUIObject();
+			jo.put("ping", true);
+			write(jo);
+			lastPinged = currentTime;
+		}
 	}
 
 }

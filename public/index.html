@@ -109,9 +109,8 @@
       <input id="m_setup" autocomplete="off" placeholder="Enter message here">
       <button id="herokuSubmit_setup">Send</button>
     </form>
-    <button id='startGameButton'>
-      Start
-    </button>
+    <button id='setupButtonA'></button>
+    <button id='setupButtonB' hidden></button>
     <h3>General Settings</h3>
     Day Start <input id="dayStartRule" class='general_rules' type='checkbox'><br>
     Day Length :  <input id="dayLengthRule" class='numberInput general_rules' type='number'> minutes <br>
@@ -166,5 +165,6 @@
   <script src="js/firebase.js"></script>
   <script src="js/index.js"></script>
   <audio hidden id="newChatMessageAudio" src="hearbeat.mp3"></audio>
+  <audio hidden id="ping" src="ping.mp3"></audio>
 </body>
 </html>

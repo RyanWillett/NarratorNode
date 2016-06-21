@@ -12,6 +12,7 @@ import shared.logic.Narrator;
 import shared.logic.Player;
 import shared.logic.PlayerList;
 import shared.logic.Rules;
+import shared.logic.exceptions.NarratorException;
 import shared.logic.exceptions.PlayerTargetingException;
 import shared.logic.listeners.NarratorListener;
 import shared.logic.support.Constants;
@@ -39,6 +40,31 @@ public class Instance implements NarratorListener{
         th = new TextHandler(n, nc, new PlayerList());
 	}
 	
+	public void removePlayer(NodePlayer leaver) throws JSONException {
+		n.removePlayer(leaver.player);
+		
+		if(leaver.player == host){
+			if(n.getAllPlayers().isEmpty()){
+				nc.instances.remove(this);
+			}else{
+				host = n.getAllPlayers().get(0);
+				sendGameState(host);
+			}
+		}
+		
+		phoneBook.remove(leaver.player);
+		leaver.player = null;
+		leaver.inst = null;
+		
+		
+		JSONObject j1 = new JSONObject();
+		j1.put("message", leaver.name + " has left the lobby.");
+		j1.put("server", false);
+		j1.put("from", "Server");
+		announce(j1, null);
+		onPlayerListStatusChange();
+	}
+	
 	public Player addPlayer(NodePlayer np) throws JSONException{
     	Player p = n.addPlayer(np.name, new NodeCommunicator(nc, np));
 		np.player = p;
@@ -46,9 +72,9 @@ public class Instance implements NarratorListener{
 		phoneBook.put(p, np);
 		
 		if(n.getAllPlayers().size() == 1)
-			host = p;
-		for(Player pi: n.getAllPlayers())
-			sendGameState(pi);
+			host = n.getAllPlayers().get(0);
+		
+		sendGameState();
 		
 		JSONObject j1 = new JSONObject();
 		j1.put("message", np.name + " has joined the lobby.");
@@ -62,7 +88,7 @@ public class Instance implements NarratorListener{
 		NodePlayer np = phoneBook.get(p);
 		nc.write(np,  j);
 	}
-	private JSONObject getGUIObject() throws JSONException{
+	static JSONObject GetGUIObject() throws JSONException{
 		JSONObject jo = new JSONObject();
 		jo.put(JSONConstants.guiUpdate, true);
 		jo.put("server", false);
@@ -296,7 +322,7 @@ public class Instance implements NarratorListener{
 	}
 	
 	void sendGameState(Player p) throws JSONException{
-		JSONObject state = getGUIObject();
+		JSONObject state = GetGUIObject();
 		addJRolesList(state);
 		addJPlayerLists(state, p);
 		addJDayLabel(state);
@@ -430,7 +456,7 @@ public class Instance implements NarratorListener{
     			r.gfInvulnerable = jo.getBoolean("gfInvulnerability");
     			r.gfUndetectable = jo.getBoolean("gfUndetectable");
     			
-    			JSONObject state = getGUIObject();
+    			JSONObject state = GetGUIObject();
     			addJRules(state);
     			for(Player pi: n.getAllPlayers().remove(host)){
     				playerJWrite(pi, state);
@@ -440,14 +466,29 @@ public class Instance implements NarratorListener{
     		if(message.equals(JSONConstants.startGame)){
     			try{
     				startGame();
+    			}catch(NarratorException e){
+    				p.sendMessage(e.getMessage());
+    				
     			}catch(Throwable t){
     				t.printStackTrace();
-    				p.sendMessage(t.getMessage());
     			}
     			return;
     		}
 		}
 
+    	if(message.equals("leaveGame")){
+    		np.leaveGame();
+    		return;
+    	}
+    	if(message.startsWith("say null -ping ")){
+    		String m = message.replace("say null -ping ", "");
+    		for(NodePlayer pinged: this.phoneBook.values()){
+    			if(pinged.name.equalsIgnoreCase(m)){
+    				pinged.ping(np);
+    				return;
+    			}
+    		}
+    	}
     	
     	
 		try{
@@ -525,7 +566,7 @@ public class Instance implements NarratorListener{
 	private void sendVotes(){
 		try{
 			for(Player p: n.getAllPlayers()){
-				JSONObject state = getGUIObject();
+				JSONObject state = GetGUIObject();
 				addJPlayerLists(state, p);
 				state.put(JSONConstants.skipVote, p.getSkipper().getVoters().size());
 				state.put(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
@@ -596,7 +637,7 @@ public class Instance implements NarratorListener{
 	public void onPlayerListStatusChange() throws JSONException {
 		JSONObject state;
 		for(Player p: n.getAllPlayers()){
-			state = getGUIObject();
+			state = GetGUIObject();
 			addJPlayerLists(state, p);
 			this.playerJWrite(p, state);
 		}
@@ -608,6 +649,8 @@ public class Instance implements NarratorListener{
 			return false;
 		return n.getAllPlayers().size() < n.getAllRoles().size();
 	}
+
+	
 
 	
 }
