@@ -589,16 +589,21 @@ public class Instance implements NarratorListener{
 		
 	}
 
-	@Override
 	public void onNightTarget(Player owner, Player target) {
-		// TODO Auto-generated method stub
+		try {
+			JSONObject state = GetGUIObject();
+			addJPlayerLists(state, owner);
+			playerJWrite(owner, state);
+		} catch (JSONException e) {}
 		
 	}
 
-	@Override
 	public void onNightTargetRemove(Player owner, Player prev) {
-		// TODO Auto-generated method stub
-		
+		try {
+			JSONObject state = GetGUIObject();
+			addJPlayerLists(state, owner);
+			playerJWrite(owner, state);
+		} catch (JSONException e) {}
 	}
 
 	@Override

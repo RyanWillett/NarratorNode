@@ -582,12 +582,31 @@ function setGraveYard(graveYard_o){
 	}
 }
 
+function setFrame(){
+	var fSpinner = $("#frameChoiceSpinner");
+	if(gameState.playerLists[J.type][gameState.commandsIndex] === 'Frame'){
+		fSpinner.show();
+		fSpinner.unbind();
+		fSpinner.change(function(){
+			for(var i = 0; i < gameState.visiblePlayers.length; i++){
+				if(gameState.visiblePlayers[i].playerSelected){
+					sendAction(true, gameState.visiblePlayers[i].playerName);
+				}
+			}
+		})
+	}else{
+		fSpinner.hide();
+	}
+}
+
 function refreshPlayers(){
 	var playerLists = gameState.playerLists;
 	var playerListType = playerLists[J.type][gameState.commandsIndex % playerLists[J.type].length];
 	gameState.visiblePlayers = playerLists[playerListType];
 	if(gameState.isDay)
 		gameState.visiblePlayers.push({playerName:"Skip Day", playerActive: true, playerVote: gameState.skipVote, playerSelected: gameState.isSkipping});
+	else
+		setFrame();
 	$('#commandLabel').html(playerListType);
 	
 	var selectables;
@@ -640,6 +659,8 @@ function setMultiCommandButtons(){
 		var gt = $('#gt');
 		lt.show();
 		gt.show();
+		lt.unbind();
+		gt.unbind();
 		lt.click(function(){
 			gameState.commandsIndex = (gameState.commandsIndex + len - 1) % len;
 			refreshPlayers();
@@ -650,6 +671,28 @@ function setMultiCommandButtons(){
 			refreshPlayers();
 		});
 	}
+	
+}
+
+function sendAction(target, name){
+	var command = $('#commandLabel').text();
+
+	var message;
+	if(!target){//untarget
+		if(command === "Vote"){
+			message = "unvote";
+		}else
+			message = command + " untarget";
+	}else{
+		message = command + " " + name;
+		if(command === "Vote" && name == "Skip Day")
+			message = "skip day";
+		if(command === "Frame"){
+			message += (" " + $("#frameChoiceSpinner").val());
+		}
+	}
+	console.log(message);
+	web_send({message: message});
 }
 
 function filterRadio(event){
@@ -659,22 +702,8 @@ function onRadioClick(e){
 	var checked = e.checked;
 	
 	var name = e.parentElement.getAttribute('name');
-	
-	
-	var command = $('#commandLabel').text();
-
-	var message;
-	if(!checked){
-		if(command === "Vote"){
-			message = "unvote";
-		}else
-			message = command + " untarget";
-	}else{
-		message = command + " " + name;
-		if(command === "Vote" && name == "Skip Day")
-			message = "skip day";
-	}
-	web_send({message: message});
+	console.log(name);
+	sendAction(checked, name);
 }
 
 
@@ -834,8 +863,9 @@ function handleObject(object){
 			gameState.skipVote = object[J.skipVote];
 			gameState.isSkipping = object[J.isSkipping];
 		}
-		if(hasType(J.playerList, object.type))
+		if(hasType(J.playerList, object.type)){
 			setLivePlayers(object.playerLists);
+		}
 
 		if(hasType(J.roles, object.type))
 			setRolesList(object.roles);
@@ -944,7 +974,6 @@ firebase.auth().onAuthStateChanged(function(user_o){
 			/*THIS THIS
 			
 			
-			setCatalogue(J.catalogue.town);
 			
 			ws.send(toJString(user, J.requestChat)); */
 		});

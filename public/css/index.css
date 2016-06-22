@@ -397,3 +397,8 @@ h2{
    color:    #000000;
    opacity:  1;
 }
+
+select{
+	background: black;
+	color: white;
+}

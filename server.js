@@ -1,7 +1,7 @@
 var exec = require('child_process').exec;
 var fs = require('fs');
 const NARRATOR = "Narrator";
-const READ_JAVA_OUTPUT = false;
+const READ_JAVA_OUTPUT = true;
 const LOG_CLIENT_OUTPUT = false;
 
 /*firebase.initializeApp({
