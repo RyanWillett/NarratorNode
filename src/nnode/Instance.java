@@ -1,5 +1,6 @@
 package nnode;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import android.texting.TextHandler;
@@ -12,13 +13,22 @@ import shared.logic.Narrator;
 import shared.logic.Player;
 import shared.logic.PlayerList;
 import shared.logic.Rules;
+import shared.logic.Team;
 import shared.logic.exceptions.NarratorException;
 import shared.logic.exceptions.PlayerTargetingException;
 import shared.logic.listeners.NarratorListener;
 import shared.logic.support.Constants;
+import shared.logic.support.Random;
 import shared.logic.support.RoleTemplate;
+import shared.logic.support.StringChoice;
+import shared.logic.templates.BasicRoles;
+import shared.roles.Blocker;
+import shared.roles.CultLeader;
+import shared.roles.Driver;
+import shared.roles.MassMurderer;
 import shared.roles.RandomRole;
 import shared.roles.Role;
+import shared.roles.SerialKiller;
 
 public class Instance implements NarratorListener{
 
@@ -47,6 +57,7 @@ public class Instance implements NarratorListener{
 			if(n.getAllPlayers().isEmpty()){
 				nc.instances.remove(this);
 			}else{
+				repickers = new PlayerList();
 				host = n.getAllPlayers().get(0);
 				sendGameState(host);
 			}
@@ -259,13 +270,42 @@ public class Instance implements NarratorListener{
 		state.getJSONArray(JSONConstants.type).put(JSONConstants.dayLabel);
 		state.put(JSONConstants.dayLabel, dayLabel);
 	}
+	private ArrayList<Team> shouldShowTeam(Player p){
+		ArrayList<Team> teams = new ArrayList<>();
+		for(Team t: p.getTeams()){
+			if(!t.knowsTeam())
+				continue;
+			if(t.getMembers().remove(p).getLivePlayers().isEmpty())
+				continue;
+			teams.add(t);
+		}
+		return teams;			
+	}
 	
 	private void addJRoleInfo(Player p, JSONObject state) throws JSONException{
 		JSONObject roleInfo = new JSONObject();
 		roleInfo.put(JSONConstants.roleColor, p.getTeam().getColor());
 		roleInfo.put(JSONConstants.roleName, p.getRoleName());
 		roleInfo.put(JSONConstants.roleDescription, p.getRoleInfo());
-		roleInfo.put(JSONConstants.roleTeam, p.getTeam().getName());
+		
+		ArrayList<Team> knownTeams = shouldShowTeam(p);
+		boolean displayTeam = !knownTeams.isEmpty();
+		roleInfo.put(JSONConstants.roleKnowsTeam, displayTeam);
+		if(displayTeam){
+			JSONArray allyList = new JSONArray();
+			JSONObject allyObject;
+			for(Team group: knownTeams){
+				for(Player ally: group.getMembers().remove(p).getLivePlayers()){
+					allyObject = new JSONObject();
+					allyObject.put(JSONConstants.teamAllyName, ally.getName());
+					allyObject.put(JSONConstants.teamAllyRole, ally.getRoleName());
+					allyObject.put(JSONConstants.teamAllyColor, group.getColor());
+					allyList.put(allyObject);
+				}
+				
+			}
+			roleInfo.put(JSONConstants.roleTeam, allyList);
+		}
 
 		state.getJSONArray(JSONConstants.type).put(JSONConstants.roleInfo);
 		state.put(JSONConstants.roleInfo, roleInfo);
@@ -359,6 +399,63 @@ public class Instance implements NarratorListener{
 		}
 	}
 	
+	private PlayerList repickers = new PlayerList();
+	private void repickHost(){
+		PlayerList options = n.getAllPlayers().remove(host).shuffle(new Random());
+		Player oldHost = host;
+		for(Player p: options){
+			if(phoneBook.get(p).isActive()){
+				host = p;
+				break;
+			}
+		}
+		if(oldHost == host && !options.isEmpty())
+			host = options.getRandom(new Random()); 
+		sendGameState();
+		repickers.clear();
+	}
+	
+	private void repickRequest(NodePlayer repicker){
+		if(repicker.player == host){
+			repickHost();
+		}else{
+			if(!repickers.contains(repicker.player)){
+				repickers.add(repicker.player);
+			}
+			Event e = new Event(-1);
+			StringChoice sc = new StringChoice(repicker.player);
+			StringChoice sc2 = new StringChoice(host);
+			sc.add(repicker.player, "You");
+			sc.add(host, "you");
+			
+			e.add(sc, " has voted to repick ", sc2, ".");
+			n.getAllPlayers().sendMessage(e);
+			if(repickers.size() >= n.getAllPlayers().size()/2 + 1){
+				repickHost();
+			}
+		}
+	}
+	private String translateName(String input){
+		switch(input){
+		case BasicRoles.BUS_DRIVER:
+			return Driver.ROLE_NAME;
+		case BasicRoles.CHAUFFEUR:
+			return Driver.ROLE_NAME;
+		case BasicRoles.ESCORT:
+			return Blocker.ROLE_NAME;
+		case BasicRoles.CONSORT:
+			return Blocker.ROLE_NAME;
+		case MassMurderer.ROLE_NAME:
+			return MassMurderer.class.getSimpleName();
+		case SerialKiller.ROLE_NAME:
+			return SerialKiller.class.getSimpleName();
+		case CultLeader.ROLE_NAME:
+			return CultLeader.class.getSimpleName();
+		default:
+			return input;
+		}
+	}
+	
 	public synchronized void handlePlayerMessage(NodePlayer np, JSONObject jo) throws JSONException {
 		String name = jo.getString("name");
     	String message = jo.getString("message");
@@ -380,12 +477,13 @@ public class Instance implements NarratorListener{
     	if(host == p){
     		if(message.equals(JSONConstants.addRole)){
     			String color = jo.getString(JSONConstants.roleColor);
-    			String role_name = jo.getString(JSONConstants.roleName);
+    			String displayed_name = jo.getString(JSONConstants.roleName);
+    			String role_name = translateName(displayed_name);
     			
     			if(Role.isRole(role_name)){
-    				n.addRole(role_name, color);
+    				n.addRole(role_name, color).setRoleName(displayed_name);
     			}else{
-    				RandomRole rr = null;
+    				RoleTemplate rr = null;
     				switch(role_name){
     				case Constants.TOWN_RANDOM_ROLE_NAME:
     					rr = RandomRole.TownRandom();
@@ -422,8 +520,9 @@ public class Instance implements NarratorListener{
     		}
     		if(message.equals(JSONConstants.removeRole)){
     			String color = jo.getString(JSONConstants.roleColor);
-    			String role_name = jo.getString(JSONConstants.roleName);
-    			RoleTemplate r = n.getAllRoles().get(role_name, color);
+    			String displayed_name = jo.getString(JSONConstants.roleName);
+    			//String role_name = this.translateName(displayed_name);
+    			RoleTemplate r = n.getAllRoles().get(displayed_name, color);
     			if(r != null){
     				n.removeRole(r);
     				sendGameState();
@@ -488,6 +587,10 @@ public class Instance implements NarratorListener{
     				return;
     			}
     		}
+    	}
+    	if(message.equals("say null -repick") && !n.isStarted()){
+    		repickRequest(np);
+    		return;
     	}
     	
     	

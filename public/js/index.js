@@ -109,6 +109,7 @@ J.catalogue = {
 		{name: 'Cultist',       color: "#D5E68C"},
 		{name: 'Cult Leader',   color: "#D5E68C"},
 		{name: 'Jester',        color: "#DDA0DD"},
+		{name: 'Amnesiac',      color: "#DDA0DD"},
 		{name: 'Executioner',   color: "#DDA0DD"}
 	],
 	randoms:[
@@ -227,6 +228,10 @@ J.descriptions = {
 		description: "Your goal is to get yourself lynched.  Do it through any means necessary.",
 		rules: []
 	},
+	Amnesiac: {
+		description: "You can permanently change your role to one in the graveyard.",
+		rules: []
+	},
 	Lookout: {
 		description: "You have the ability to find out all who visit someone.",
 		rules: []
@@ -307,7 +312,7 @@ J.descriptions = {
 		rules: []
 	},
 	'Neutral Random': {
-		description: "Spawns<br>Serial Killer<br>Arsonist<br>Mass Murderer<br>Witch<br>Cultist<br>Cult Leader<br>Jester<br>Executioner",
+		description: "Spawns<br>Serial Killer<br>Arsonist<br>Mass Murderer<br>Witch<br>Cultist<br>Cult Leader<br>Amnesiac<br>Jester<br>Executioner",
 		rules: []
 	}
 };
@@ -764,9 +769,18 @@ function showButton(bool){
 
 function setRoleInfo(roleInfo){
 	gameState.role = roleInfo;
-	setTrim(roleInfo.roleColor);
 	$("#roleCardHeader").html(user.displayName + " (" + roleInfo.roleName + ")");
-	$(".roleCard p").html(roleInfo.roleDescription);
+	var descriptionText = roleInfo.roleDescription;
+	if (roleInfo.roleKnowsTeam){
+		descriptionText += "<br><br><span class='trim'>Allies</span><br>";
+		var ally;
+		for (var i = 0; i < roleInfo.roleTeam.length; i++){
+			ally = roleInfo.roleTeam[i];
+			descriptionText += "<span style='color: " + ally.teamAllyColor + ";'>" + ally.teamAllyRole + "</span> : " + ally.teamAllyName + "<br>";
+		}
+	}
+	$(".roleCard p").html(descriptionText);
+	setTrim(roleInfo.roleColor);
 }
 
 function setHost(bool){

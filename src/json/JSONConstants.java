@@ -21,6 +21,13 @@ public class JSONConstants {
 	public static final String roleName = "roleName";
 	public static final String roleTeam = "roleTeam";
 	public static final String roleDescription = "roleDescription";
+	public static final String roleKnowsTeam = "roleKnowsTeam";
+	
+	public static final String teamName = "teamName";
+	public static final String teamAllyColor = "teamAllyColor";
+	public static final String teamMembers = "teamMembers";
+	public static final String teamAllyName = "teamAllyName";
+	public static final String teamAllyRole = "teamAllyRole";
 
 	public static final String gameStart = "gameStart";
 
@@ -48,6 +55,10 @@ public class JSONConstants {
 	public static final String playerSelected = "playerSelected";
 	public static final String isSkipping = "isSkipping";
 	public static final String playerActive = "playerActive";
+
+
+
+
 
 
 
