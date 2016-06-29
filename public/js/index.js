@@ -22,6 +22,7 @@ gameState.host = false;
 gameState.commandsIndex = 0;
 gameState.isOver = false;
 gameState.timer = -2;
+gameState.isAlive = true;
 
 var J = {};
 J.guiUpdate = 'guiUpdate';
@@ -76,6 +77,7 @@ J.catalogue = {
 		{name: 'Doctor',     color: J.TOWN},
 		{name: 'Bodyguard',  color: J.TOWN},
 		{name: 'Escort',     color: J.TOWN},
+		{name: 'Gunsmith',   color: J.TOWN},
 		{name: 'Bus Driver', color: J.TOWN},
 		{name: 'Veteran',    color: J.TOWN},
 		{name: 'Vigilante',  color: J.TOWN},
@@ -110,6 +112,7 @@ J.catalogue = {
 		{name: 'Cult Leader',   color: "#D5E68C"},
 		{name: 'Jester',        color: "#DDA0DD"},
 		{name: 'Amnesiac',      color: "#DDA0DD"},
+		{name: 'Survivor',      color: "#DDA0DD"},
 		{name: 'Executioner',   color: "#DDA0DD"}
 	],
 	randoms:[
@@ -150,6 +153,10 @@ J.descriptions = {
 		rules: [{text: "Roleblock Immune",
 				type: "checkbox",
 				name: "blockImmune"}]
+	},
+	Gunsmith: {
+		description: "You can give a gun to people during the night.",
+		rules: []
 	},
 	Consort: {
 		description: "You entertain at night. They will not be able to complete their night actions.",
@@ -232,6 +239,10 @@ J.descriptions = {
 		description: "You can permanently change your role to one in the graveyard.",
 		rules: []
 	},
+	Survivor: {
+		description: "Your goal is simply to survive till the end.  You do not care who wins or loses.",
+		rules: []
+	},
 	Lookout: {
 		description: "You have the ability to find out all who visit someone.",
 		rules: []
@@ -288,7 +299,7 @@ J.descriptions = {
 		rules: []
 	},
 	'Town Random': {
-		description: "Spawns:<br> Citizen<br>Sheriff<br>Doctor<br>Lookout<br>Detective<br>Bus Driver<br>Escort<br>Vigilante<br>Mayor<br>Bodyguard<br>Veteran",
+		description: "Spawns:<br> Citizen<br>Sheriff<br>Doctor<br>Lookout<br>Detective<br>Bus Driver<br>Escort<br>Vigilante<br>Mayor<br>Bodyguard<br>Gunsmith<br>Veteran",
 		rules: []
 	},
 	'Town Investigative': {
@@ -317,15 +328,6 @@ J.descriptions = {
 	}
 };
 
-function toJString(user, message){
-	var o = {
-		"email" : user.email.toString(), 
-		"name" : user.displayName.toString(), 
-		"message": message,
-		"server": false
-	};
-	return JSON.stringify(o);
-}
 
 function addToChat(message){
 	if (message.length === 0)
@@ -360,7 +362,6 @@ function addToChat(message){
 
 var socket = null;
 function web_send(o){
-	o.email = user.email;
 	o.name  = user.displayName;
 	socket.send(JSON.stringify(o));
 }
@@ -576,11 +577,14 @@ function setRolesList(rolesList_o){
 var my_ele;
 
 function setGraveYard(graveYard_o){
+	gameState.graveyard = graveYard_o;
 	var graveYard = $("#graveYard");
 	graveYard.empty();
 	var color;
 	var role_li;
 	for (var i = 0; i < graveYard_o.length; i++){
+		if(graveYard_o[i].roleName === user.displayName)
+			gameState.isAlive = false;
 		role_li = $('<li>'+graveYard_o[i].roleName+'</li>');
 		role_li[0].style.color = graveYard_o[i].color;
 		role_li.appendTo(graveYard);
@@ -604,15 +608,22 @@ function setFrame(){
 	}
 }
 
+function setCommandsLabel(label){
+	if(label === 'Gun')
+		label = 'Give Gun';
+	$('#commandLabel').html(label);
+}
+
 function refreshPlayers(){
 	var playerLists = gameState.playerLists;
 	var playerListType = playerLists[J.type][gameState.commandsIndex % playerLists[J.type].length];
 	gameState.visiblePlayers = playerLists[playerListType];
-	if(gameState.isDay)
+	if(gameState.isDay && gameState.isAlive)
 		gameState.visiblePlayers.push({playerName:"Skip Day", playerActive: true, playerVote: gameState.skipVote, playerSelected: gameState.isSkipping});
 	else
 		setFrame();
-	$('#commandLabel').html(playerListType);
+
+	setCommandsLabel(playerListType);
 	
 	var selectables;
 	var radioText = "";
@@ -646,6 +657,7 @@ function refreshPlayers(){
 			li.find(">:first-child").prop('checked', player.playerSelected);
 		li.appendTo(selectables);
 	}
+	$('.radios').prop('disabled', gameState.endedNight && !gameState.isDay);
 
 	if(gameState.started)
 		$('.radios').change(filterRadio);
@@ -689,6 +701,12 @@ function sendAction(target, name){
 		}else
 			message = command + " untarget";
 	}else{
+		if(command === "Pickup 1")
+			command = 'swap1';
+		else if(command === "Pickup 2")
+			command = 'swap2';
+		else if(command === "Give Gun")
+			command = 'gun';
 		message = command + " " + name;
 		if(command === "Vote" && name == "Skip Day")
 			message = "skip day";
@@ -696,7 +714,6 @@ function sendAction(target, name){
 			message += (" " + $("#frameChoiceSpinner").val());
 		}
 	}
-	console.log(message);
 	web_send({message: message});
 }
 
@@ -707,7 +724,6 @@ function onRadioClick(e){
 	var checked = e.checked;
 	
 	var name = e.parentElement.getAttribute('name');
-	console.log(name);
 	sendAction(checked, name);
 }
 
@@ -741,6 +757,7 @@ function setTrim(color){
 	trimObjects = $('.trim');
 	for(var i = 0; i < trimObjects.length; i++){
 		trimObjects[i].style.color=color;
+		trimObjects.css('border-color', color);
 	}
 }
 setTrim("#008080");
@@ -749,13 +766,17 @@ function showButton(bool){
 	var button = $("#theButton");
 	if(bool){
 		button.show();
-		if(gameState.isDay){
+		if(gameState.isOver){
+			button.text('Exit Game');
+		}
+		else if(gameState.isDay){
 			if(gameState.role.roleName === 'Mayor'){
 				button.text('Reveal');
 			}else{
 				button.text('Burn');
 			}
 		}else{
+			$('.radios').prop('disabled', gameState.endedNight || gameState.isDay);
 			if(gameState.endedNight){
 				button.text('Cancel End Night');
 			}else
@@ -857,6 +878,9 @@ function handleObject(object){
 			}
 			lobby_page.hidden = true;
 		}
+		if(object.isFinished !== undefined){
+			gameState.isOver = object.isFinished;
+		}
 		if(object[J.host] !== undefined){
 			gameState.host = object[J.host];
 		}
@@ -897,7 +921,6 @@ function handleObject(object){
 			var ele = $('#roleDescriptionLabel');
 			setRules(ele.text(), convertColor(ele.css("color")));
 		}
-
 		if(object.ping !== undefined){
 			$("#ping")[0].play();
 		}
@@ -934,6 +957,14 @@ function host_submit(){
 	return false;
 }
 
+function greetServer(){
+	var o = {}
+	o.message = "greeting";
+	o.server = true;
+	web_send(o);
+	setTimer();
+}
+
 firebase.auth().onAuthStateChanged(function(user_o){
 	if(user_o && user === null){//to ensure that we're not initiating a websocket a million times
 		user = user_o;
@@ -964,12 +995,11 @@ firebase.auth().onAuthStateChanged(function(user_o){
 			if(m.val().length === 0)
 				return false;
 
-			
-			var text = toJString(user_o, message);
-			var o = JSON.parse(text);
+			var o = {}
 			o.action = false;
-			text = JSON.stringify(o);
-			ws.send( text );
+			o.message = message;
+			web_send(o);
+
 			m.val('');
 			return false;
 		});
@@ -983,13 +1013,7 @@ firebase.auth().onAuthStateChanged(function(user_o){
 		ws.onopen = (function(){
 			console.log('websocket client opened');
 			socket = ws;
-			ws.send(toJString(user, "greeting"));
-			setTimer();
-			/*THIS THIS
-			
-			
-			
-			ws.send(toJString(user, J.requestChat)); */
+			greetServer();
 		});
 		ws.onclose = (function(){
 			$('#messages').append($('<li>').text("Connection with server terminated"));
@@ -999,12 +1023,12 @@ firebase.auth().onAuthStateChanged(function(user_o){
 		var button = $("#theButton");
 		button.on("click", function(){
 			if(gameState.isOver){
-
+				location.reload();
 			}else if(gameState.isDay){
 				if(gameState.role.roleName === 'Mayor'){
-					web_send({message: 'reveal'});
+					web_send({message: 'Reveal'});
 				}else{
-					web_send({message: 'burn'});
+					web_send({message: 'Burn'});
 				}
 			}else{
 				web_send({message: 'end night'});
@@ -1013,6 +1037,7 @@ firebase.auth().onAuthStateChanged(function(user_o){
 					button.text('Cancel End Night');
 				}else
 					button.text('End Night');
+				$('.radios').prop('disabled', gameState.endedNight || gameState.isDay);
 			}
 
 
@@ -1021,6 +1046,9 @@ firebase.auth().onAuthStateChanged(function(user_o){
 
 	}else if (user_o === null){
 		login_page.hidden = false;
+		lobby_page.hidden = true;
+		setup_page.hidden = true;
+		main.hidden = true;
 	}
 });
 
@@ -1036,38 +1064,54 @@ function logout(){
 function login(){
 	username = $("#username_field")[0].value;
 	password = $("#password_field")[0].value;
-	firebase.auth().signInWithEmailAndPassword(username, password)
+	firebase.auth().signInWithEmailAndPassword(username + "@sc2mafia.com", password)
 	.then(function(user){
-		main.hidden = false;
 		login_page.hidden = true;
+		greetServer();
 	},
 	function error(error){
-		console.log(error);
+		my_err = error;
+		var errorBox = $("#errorCode");
+		if(error.code === "auth/wrong-password"){
+			errorBox.text('Incorrect password');
+		}else if(error.code === "auth/user-not-found"){
+			errorBox.text('Username not found!');
+		}else{
+			console.log(error);
+		}
 	});
 }
 
 function setDisplayName(user_o){
-	var name = $("#display_field")[0].value.replace(/ /g, '');
-	return user_o.updateProfile({displayName: name});
+	return user_o.updateProfile({displayName: user_o.email});
 }
 
+var my_err;
 function signup(){
-	display_field = $("#display_field")[0];
-	if (display_field.hidden){
-		display_field.hidden = false;
-	}else{
-		username = $("#username_field")[0].value;
-		password = $("#password_field")[0].value;
-		firebase.auth().createUserWithEmailAndPassword(username, password)
-		.then(setDisplayName)
-		.then(function(user){
-			main.hidden = false;
-			login_page.hidden = true;
-		},
-		function error(error){
+	username = $("#username_field")[0].value.replace(/ /g, '');
+	if(username.length=== 0)
+		return;
+	password = $("#password_field")[0].value;
+	firebase.auth().createUserWithEmailAndPassword(username + "@sc2mafia.com", password)
+	.then(function(user_o){
+		return user_o.updateProfile({displayName: username});
+	})
+	.then(function(user){
+		login_page.hidden = true;
+		greetServer();
+	},
+	function error(error){
+		var errorBox = $("#errorCode");
+		if(error.code === "auth/invalid-email"){
+			errorBox.text('Badly formatted username');
+		}else if(error.code === "auth/weak-password"){
+			errorBox.text('Password is too weak.');
+		}else if(error.code === "auth/email-already-in-use"){
+			errorBox.text('That username is taken!');
+		}else{
 			console.log(error);
-		});
-	}
+		}
+	});
 }
 
 $(document).ready(function(){

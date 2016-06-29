@@ -38,11 +38,11 @@
       <button id="logoutButton">Logout</button>
 
     </nav>
-    <div class="roleCard">
+    <div class="roleCard trim">
       <div id = "roleCardHeader" class="trim"></div>
       <p></p>
     </div>
-    <div class="targetablesPane">
+    <div class="targetablesPane trim">
       <div class="commandsLabel">
         <span class="trim" style="text-decoration: underline;">Actions</span><br>
         <button id="lt">&lt;</button>
@@ -151,14 +151,17 @@
   <div id="login_page" hidden>
     <h1>The Narrator</h1>
     <h2>Mafia</h2>
-    <input id="username_field" type="text" name="u" placeholder="Email" required="required" />
+    <input id="username_field" type="text" name="u" placeholder="Username" required="required" />
     <br/>
     <input id="password_field" type="password" name="p" placeholder="Password" required="required" />
     <br/>
     <input id="display_field" type="text" name="d" placeholder="Display Name" required="required" hidden/>
-    <br/>
+    <br>
+
     <button id="signup_button" type="submit" class="btn btn-primary btn-block btn-large">Sign up</button>
     <button id="login_button" type="submit" class="btn btn-primary btn-block btn-large">Let me in.</button>
+    <br>
+    <div id="errorCode"></div>
     
   </div>
 

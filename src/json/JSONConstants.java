@@ -40,6 +40,7 @@ public class JSONConstants {
 	public static final String graveYard = "graveYard";
 	
 	public static final String isHost = "isHost";
+	public static final String isFinished = "isFinished";
 	public static final String addRole = "addRole";
 	public static final String removeRole = "removeRole";
 	public static final String startGame = "startGame";
@@ -55,6 +56,7 @@ public class JSONConstants {
 	public static final String playerSelected = "playerSelected";
 	public static final String isSkipping = "isSkipping";
 	public static final String playerActive = "playerActive";
+
 
 
 

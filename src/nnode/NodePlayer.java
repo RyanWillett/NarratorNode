@@ -10,19 +10,17 @@ public class NodePlayer {
 
 	protected Instance inst;
 	protected String name;
-	protected String email;
 	protected Player player;
 	private NodeSwitch nc;
 	private boolean active;
 	
-	public NodePlayer(String email, String name, NodeSwitch nc){
-		this.email = email;
+	public NodePlayer(String name, NodeSwitch nc){
 		this.name  = name;
 		this.nc = nc;
 	}
 	
 	public int hashcode(){
-		return email.hashCode();
+		return name.hashCode();
 	}
 
 	public boolean isInLobby() {
@@ -34,7 +32,7 @@ public class NodePlayer {
 			return false;
 		if(o.getClass() != getClass())
 			return false;
-		return email.equals(((NodePlayer) o).email);
+		return name.equals(((NodePlayer) o).name);
 		
 	}
 

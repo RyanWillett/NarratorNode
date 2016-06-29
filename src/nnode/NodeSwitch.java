@@ -19,7 +19,6 @@ import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
 import shared.logic.Player;
-import shared.logic.support.CommunicatorNull;
 
 public class NodeSwitch implements TextInput{
 	
@@ -30,7 +29,7 @@ public class NodeSwitch implements TextInput{
 	InputStream input;
 	//protected HashMap<String, Instance> phoneBook;
 	protected ArrayList<Instance> instances;
-	protected HashMap<String, NodePlayer> ePhoneBook;
+	protected HashMap<String, NodePlayer> phoneBook;
 	
 
     private static final boolean TEST_MODE = false; 
@@ -54,12 +53,12 @@ public class NodeSwitch implements TextInput{
     		file = new File("C:\\Users\\Michael\\Desktop\\HerokuTest\\node-ws-test\\src\\" + "ab.txt");
     		
     	}else{
-        	DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
+        	DateFormat dateFormat = new SimpleDateFormat("MM-dd-HH-mm");
     		file = new File(dateFormat.format(new Date())+".txt");
     	}
-    	file.createNewFile();
-    	if(!TEST_MODE)
-    		in = new FileWriter(file);
+    	//file.createNewFile();
+    	//if(!TEST_MODE)
+    		//in = new FileWriter(file);
     }
   
     
@@ -87,7 +86,7 @@ public class NodeSwitch implements TextInput{
             scan = new Scanner( input );
     	}
         
-    	ePhoneBook = new HashMap<>();
+    	phoneBook = new HashMap<>();
     	instances = new ArrayList<>();
         
   
@@ -166,9 +165,9 @@ public class NodeSwitch implements TextInput{
 		}
     }
     
-    private NodePlayer addNodePlayer(String email, String name) throws JSONException{
-    	NodePlayer np = new NodePlayer(email, name, this); 
-		ePhoneBook.put(email, np);
+    private NodePlayer addNodePlayer(String name) throws JSONException{
+    	NodePlayer np = new NodePlayer(name, this); 
+		phoneBook.put(name, np);
     	
     	return np;
     }
@@ -191,11 +190,10 @@ public class NodeSwitch implements TextInput{
 	}
     
     public void handleServerMessage(JSONObject jo) throws JSONException{
-		String email = jo.getString("email");
-		NodePlayer np = ePhoneBook.get(email);
+		String name = jo.getString("name");
+		NodePlayer np = phoneBook.get(name);
 		if(np == null){
-			String name = jo.getString("name");
-			np = addNodePlayer(email, name);
+			np = addNodePlayer(name);
 		}
     	switch(jo.getString("message")){
     	case "greeting":
@@ -212,11 +210,11 @@ public class NodeSwitch implements TextInput{
     	
     	case "disconnect":
     		if(np.isInLobby()){
-    			ePhoneBook.remove(np.email);
+    			phoneBook.remove(np.name);
     			removePlayerFromLobby(np);
     		}else{
     			if(!np.inst.n.isInProgress() && np.inst.n.isStarted())
-        			ePhoneBook.remove(np.email);
+        			phoneBook.remove(np.name);
     		}
     		np.setInactive();
     		break;
@@ -249,8 +247,8 @@ public class NodeSwitch implements TextInput{
     	}
     }
     public void handlePlayerMessage(JSONObject jo) throws JSONException{
-    	String email = jo.getString("email");
-    	NodePlayer np = ePhoneBook.get(email);
+    	String name = jo.getString("name");
+    	NodePlayer np = phoneBook.get(name);
     	Instance i = np.inst;
     	if(i == null){
     		String message = jo.getString("message");
@@ -279,11 +277,11 @@ public class NodeSwitch implements TextInput{
     		i.handlePlayerMessage(np, jo);
     }
     
-    public void write(String email, JSONObject jo) throws JSONException{
-    	write(ePhoneBook.get(email), jo);
+    public void write(String name, JSONObject jo) throws JSONException{
+    	write(phoneBook.get(name), jo);
     }
     public void write(NodePlayer np, JSONObject jo) throws JSONException{
-    	jo.put("email", np.email);
+    	jo.put("name", np.name);
     	String s = jo.toString();
     	//System.out.println("(java -> heroku): " + s + "\n");
     	if(writer != null){

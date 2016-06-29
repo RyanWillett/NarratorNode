@@ -1,6 +1,12 @@
 package nnode;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 
 import android.texting.TextHandler;
@@ -8,11 +14,11 @@ import json.JSONArray;
 import json.JSONConstants;
 import json.JSONException;
 import json.JSONObject;
-import shared.event.Event;
+import shared.event.Message;
+import shared.event.OGIMessage;
 import shared.logic.Narrator;
 import shared.logic.Player;
 import shared.logic.PlayerList;
-import shared.logic.Rules;
 import shared.logic.Team;
 import shared.logic.exceptions.NarratorException;
 import shared.logic.exceptions.PlayerTargetingException;
@@ -21,6 +27,7 @@ import shared.logic.support.Constants;
 import shared.logic.support.Random;
 import shared.logic.support.RoleTemplate;
 import shared.logic.support.StringChoice;
+import shared.logic.support.rules.Rules;
 import shared.logic.templates.BasicRoles;
 import shared.roles.Blocker;
 import shared.roles.CultLeader;
@@ -316,7 +323,7 @@ public class Instance implements NarratorListener{
 		
 		JSONObject graveMarker;
 		String color;
-		for(Player p: n.getDeadPlayers()){
+		for(Player p: n.getDeadPlayers().sortByDeath()){
 			graveMarker = new JSONObject();
 			if(p.isCleaned())
 				color = "#FFFFFF";
@@ -368,15 +375,18 @@ public class Instance implements NarratorListener{
 		addJDayLabel(state);
 		addJGraveYard(state);
 		state.put(JSONConstants.gameStart, n.isStarted());
-		state.put(JSONConstants.showButton, p.isAlive() && (n.isNight() || p.hasDayAction()));
+		state.put(JSONConstants.showButton, !n.isInProgress() || p.isAlive() && (n.isNight() || p.hasDayAction()));
 		state.put(JSONConstants.endedNight, n.isNight() && p.endedNight());
 		
 		
 		if(n.isStarted()){
 			addJRoleInfo(p, state);
 			state.put(JSONConstants.isDay, n.isDay());
-			if(n.isInProgress())
+			if(n.isInProgress()){
 				state.put(JSONConstants.timer, getEndTime());
+			}else{
+				state.put(JSONConstants.isFinished, true);
+			}
 			if(n.isDay()){
 				state.put(JSONConstants.skipVote, p.getSkipper().getVoters().size());
 				state.put(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
@@ -400,38 +410,43 @@ public class Instance implements NarratorListener{
 	}
 	
 	private PlayerList repickers = new PlayerList();
-	private void repickHost(){
-		PlayerList options = n.getAllPlayers().remove(host).shuffle(new Random());
-		Player oldHost = host;
-		for(Player p: options){
-			if(phoneBook.get(p).isActive()){
-				host = p;
-				break;
+	private void repickHost(String message){
+		Player potential = n.getAllPlayers().getPlayerByName(message);
+		if(potential != null && phoneBook.get(potential).isActive() && message.length() != 0){
+			host = potential;
+		}else{
+			PlayerList options = n.getAllPlayers().remove(host).shuffle(new Random());
+			Player oldHost = host;
+			for(Player p: options){
+				if(phoneBook.get(p).isActive()){
+					host = p;
+					break;
+				}
 			}
+			if(oldHost == host && !options.isEmpty())
+				host = options.getRandom(new Random());
 		}
-		if(oldHost == host && !options.isEmpty())
-			host = options.getRandom(new Random()); 
 		sendGameState();
 		repickers.clear();
 	}
 	
-	private void repickRequest(NodePlayer repicker){
+	private void repickRequest(NodePlayer repicker, String message){
 		if(repicker.player == host){
-			repickHost();
+			repickHost(message);
 		}else{
 			if(!repickers.contains(repicker.player)){
 				repickers.add(repicker.player);
 			}
-			Event e = new Event(-1);
 			StringChoice sc = new StringChoice(repicker.player);
-			StringChoice sc2 = new StringChoice(host);
 			sc.add(repicker.player, "You");
-			sc.add(host, "you");
+			StringChoice sc2 = new StringChoice(host);
+			sc2.add(host, "you");
+			StringChoice have = new StringChoice("has");
+			have.add(repicker.player, "have");
 			
-			e.add(sc, " has voted to repick ", sc2, ".");
-			n.getAllPlayers().sendMessage(e);
+			new OGIMessage(n.getAllPlayers(), sc, " ", have, " voted to repick ", sc2, ".");
 			if(repickers.size() >= n.getAllPlayers().size()/2 + 1){
-				repickHost();
+				repickHost("");
 			}
 		}
 	}
@@ -566,7 +581,7 @@ public class Instance implements NarratorListener{
     			try{
     				startGame();
     			}catch(NarratorException e){
-    				p.sendMessage(e.getMessage());
+    				new OGIMessage(p, e.getMessage());
     				
     			}catch(Throwable t){
     				t.printStackTrace();
@@ -588,8 +603,8 @@ public class Instance implements NarratorListener{
     			}
     		}
     	}
-    	if(message.equals("say null -repick") && !n.isStarted()){
-    		repickRequest(np);
+    	if(message.startsWith("say null -repick") && !n.isStarted()){
+    		repickRequest(np, message.replace("say null -repick", "").replaceAll(" ", ""));
     		return;
     	}
     	
@@ -598,13 +613,12 @@ public class Instance implements NarratorListener{
 			th.text(p, message, false);
 		}catch (Throwable t){
 			t.printStackTrace();
-			p.sendMessage(new Event(-1).add("Server : " + t.getMessage()));
+			new OGIMessage(p, "Server : " + t.getMessage());
     	}
     	
     	
 		
 	}
-
 	public void onGameStart() {
 		startTimer();
 		sendGameState();
@@ -613,7 +627,7 @@ public class Instance implements NarratorListener{
 
 	protected void resetChat(Player p){
 		StringBuilder sb = new StringBuilder();
-		for(Event e: p.getEvents()){
+		for(Message e: p.getEvents()){
 			sb.append(e.access(p.getName(), true) + "\n");
 		}
 		try {
@@ -634,26 +648,49 @@ public class Instance implements NarratorListener{
 	public void onNightStart(PlayerList lynched) {
 		startTimer();
 		sendGameState();
-		if(!lynched.isEmpty()){
-			resetChat();
-		}
+		resetChat();
+		
 	}
 
 	public void onDayStart(PlayerList newDead) {
 		startTimer();
 		sendGameState();
 		
-		if(!newDead.isEmpty()){
-			resetChat();
+		resetChat();
+		
+	}
+	
+	private void saveCommands(){
+    	DateFormat dateFormat = new SimpleDateFormat("MM-dd-HH-mm");
+		File file = new File(dateFormat.format(new Date())+"[" + host.getName() + "].txt");
+		try {
+			file.createNewFile();
+			FileWriter in = new FileWriter(file);
+			JSONObject jo = new JSONObject();
+			JSONArray playerInfoArray = new JSONArray();
+			int day = 0;
+			for(Player p: n.getAllPlayers()){
+				JSONObject playerInfo = new JSONObject();
+				playerInfo.put("name", p.getName());
+				playerInfo.put("color", p.getTeam(day));
+				playerInfo.put("role", p.getRole(day).getClass().getSimpleName());
+			}
+			jo.put("playerInfo", playerInfoArray);
+			jo.put("commands", new JSONArray(n.getCommands()));
+			in.write(jo.toString());
+			in.close();
+		} catch (IOException | JSONException | NullPointerException e) {
+			e.printStackTrace();
 		}
 	}
 	
 	public void onEndGame() {
 		//game ended
+		saveCommands();
 		timer.interrupt();
+		sendGameState();
 		resetChat();
-    	Event e = new Event(-1).add("Server : " + "Press refresh to join another game!");
-    	n.getAllPlayers().sendMessage(e);
+    	new OGIMessage(n.getAllPlayers(), "Server : " + "Press refresh to join another game!");
 	}
 	
 	public void onMayorReveal(Player mayor) {
@@ -661,9 +698,7 @@ public class Instance implements NarratorListener{
 	}
 
 	public void onArsonDayBurn(Player arson, PlayerList burned) {
-		// TODO Auto-generated method stub
-		if(!burned.isEmpty())
-			resetChat();
+		resetChat();
 	}
 
 	private void sendVotes(){
@@ -678,16 +713,16 @@ public class Instance implements NarratorListener{
 		}catch(JSONException e){}
 	}
 	
-	public void onVote(Player voter, Player target, int voteCount, Event e) {
+	public void onVote(Player voter, Player target, int voteCount, Message e) {
 		sendVotes();
 		
 	}
 
-	public void onUnvote(Player voter, Player prev, int voteCountToLynch, Event e) {
+	public void onUnvote(Player voter, Player prev, int voteCountToLynch, Message e) {
 		sendVotes();
 	}
 
-	public void onChangeVote(Player voter, Player target, Player prevTarget, int toLynch, Event e) {
+	public void onChangeVote(Player voter, Player target, Player prevTarget, int toLynch, Message e) {
 		sendVotes();
 		
 	}
@@ -722,7 +757,7 @@ public class Instance implements NarratorListener{
 	}
 
 	@Override
-	public void onMessageReceive(Player receiver, Event e) {
+	public void onMessageReceive(Player receiver, Message e) {
 		// TODO Auto-generated method stub
 		
 	}

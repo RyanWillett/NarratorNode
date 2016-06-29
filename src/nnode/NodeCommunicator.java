@@ -2,8 +2,8 @@ package nnode;
 
 import json.JSONException;
 import json.JSONObject;
-import shared.event.Event;
 import shared.event.EventList;
+import shared.event.Message;
 import shared.logic.support.Communicator;
 import shared.logic.support.CommunicatorHandler;
 import shared.packaging.Packager;
@@ -34,13 +34,13 @@ public class NodeCommunicator extends Communicator{
 			}catch(JSONException e){}
 		}
 	}
-	public void sendMessage(Event f) {
+	public void sendMessage(Message f) {
 		sendToNC(f.access(getPlayer(), true));
 		
 	}
 	public void sendMessage(EventList eList){
 		StringBuilder sb = new StringBuilder();
-		for(Event e: eList){
+		for(Message e: eList){
 			sb.append(e.access(getPlayer().getName(), true) + "\n");
 		}
 		sendToNC(sb.toString());

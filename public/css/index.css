@@ -22,6 +22,7 @@ nav {
 	height: 280px;
 	max-height: 280px;
 	background: black;
+	margin-top: -4px;
 }
 #dayLabel{
 	text-align: center;
@@ -37,7 +38,7 @@ nav {
 #logoutButton{
 	position: absolute;
 	left: 0;
-	top: 0;
+	top: 4px;
 }
 
 .info-list-container{
@@ -47,9 +48,11 @@ nav {
 	width: 150px;
 	height: 280px;
 	max-height: 280px;
+	margin-top: -4px;
 }
 .info-header{
 	text-decoration: underline;
+	padding-top: 3px;
 }
 .info-list{
 	overflow: auto;
@@ -92,6 +95,7 @@ nav {
 }
 .roleCard p{
 	padding: 8px;
+	font-size: 15px;
 	color: white;
 	-webkit-user-select: none;
 	-khtml-user-select: none;
@@ -109,9 +113,7 @@ nav {
 	padding: 5px;
 	border: 6px;
 	border-radius: 30px;
-	border-color: blue;
 	border-style: double;
-
 }
 .commandsLabel{
 	text-align: center;
@@ -208,6 +210,13 @@ button {
 	padding-left: 6px;
 	color: #E8FFFF;
 }
+.headerLabel{
+	text-align: center;
+	font-size: 25px;
+}
+.feedback{
+	color: #3BB9FF;
+}
 .chat li:nth-child(odd) { background: #131519; }
 .chat li:nth-child(even) { background: #0C090A; }
 
@@ -227,6 +236,10 @@ button {
     left: 20%;
     top: 30%;
     width: 60%;
+}
+#errorCode{
+	color: red;
+	margin-top: 10px;
 }
 
 h1{

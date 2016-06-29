@@ -114,6 +114,10 @@ function web_send(name, message){
 
 var pipe = null;
 
+function pipe_Jwrite(o){
+  return pipe_write(JSON.stringify(o));
+}
+
 function pipe_write(m){
   if(pipe !== null){
     pipe.write(m + '\n');
@@ -127,6 +131,7 @@ function pipe_write(m){
 
 function toJString(name, message){
   var o = {"message": message};
+  o.name = name;
   return JSON.stringify(o);
 }
 
@@ -136,25 +141,22 @@ wss.on("connection", function(ws) {
   var o = toJString(NARRATOR, "You are now connected!");
   ws.send(o);
 
-  console.log("websocket connection open");
-
   ws.on('message', function(message){
     //console.log('web -> heroku : ' + message);
     try{
       o = JSON.parse(message);
 
       
-      if (!(o.email in connections_mapping)){
+      if (!(o.name in connections_mapping)){
         //o.message = 'greeting';  message should already be greeting
-        o.server = true;     
-        pipe_write(JSON.stringify(o));
-        connections_mapping[o.email] = ws;
+        pipe_write(message);
+        connections_mapping[o.name] = ws;
         return;
       }
-      if(connections_mapping[o.email] != ws){
-        connections_mapping[o.email].close();
+      if(connections_mapping[o.name] != ws){
+        connections_mapping[o.name].close();
       }
-      connections_mapping[o.email] = ws;
+      connections_mapping[o.name] = ws;
 
       if(o.message.length !== 0){
         pipe_write(message);
@@ -173,8 +175,8 @@ wss.on("connection", function(ws) {
         o = {};
         o.server = true;
         o.message = 'disconnect';
-        o.email = i;
-        pipe_write(JSON.stringify(o));
+        o.name = i;
+        pipe_Jwrite(o);
         delete connections_mapping[i];
         break;
       }
@@ -214,7 +216,7 @@ function receiver(data) {
     if(jo.server)
       handle_java_event(jo);
     else
-      web_send(jo.email, completed);
+      web_send(jo.name, completed);
     
   }
 }
