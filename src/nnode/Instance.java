@@ -51,8 +51,8 @@ public class Instance implements NarratorListener{
 		
 		Rules r = n.getRules();
         r.DAY_START = Narrator.DAY_START;
-        r.DAY_LENGTH = 20;
-        r.NIGHT_LENGTH = 20;
+        r.DAY_LENGTH = 5;
+        r.NIGHT_LENGTH = 2;
         
         th = new TextHandler(n, nc, new PlayerList());
 	}
@@ -245,7 +245,7 @@ public class Instance implements NarratorListener{
 					if(acceptableTargets.isEmpty())
 						continue;
 
-					JSONArray names = getJPlayerArray(acceptableTargets, p.getTarget(ability));
+					JSONArray names = getJPlayerArray(acceptableTargets, p.getTargets(ability));
 					playerLists.put(s_ability, names);
 					playerLists.getJSONArray(JSONConstants.type).put(s_ability);
 				}
@@ -331,6 +331,7 @@ public class Instance implements NarratorListener{
 				color = p.getTeam().getColor();
 			graveMarker.put(JSONConstants.color, color);
 			graveMarker.put(JSONConstants.roleName, p.getDescription());
+			graveMarker.put("name", p.getName());
 			graveYard.put(graveMarker);
 		}
 		
@@ -626,6 +627,7 @@ public class Instance implements NarratorListener{
 	}
 
 	protected void resetChat(Player p){
+		System.out.println("resetting chat");
 		StringBuilder sb = new StringBuilder();
 		for(Message e: p.getEvents()){
 			sb.append(e.access(p.getName(), true) + "\n");

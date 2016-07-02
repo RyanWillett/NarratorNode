@@ -78,9 +78,12 @@ J.catalogue = {
 		{name: 'Bodyguard',  color: J.TOWN},
 		{name: 'Escort',     color: J.TOWN},
 		{name: 'Gunsmith',   color: J.TOWN},
+		{name: 'Armorsmith', color: J.TOWN},
+		{name: 'Baker',      color: J.TOWN},
 		{name: 'Bus Driver', color: J.TOWN},
 		{name: 'Veteran',    color: J.TOWN},
 		{name: 'Vigilante',  color: J.TOWN},
+		{name: 'Baker',      color: J.TOWN},
 		{name: 'Mayor',      color: J.TOWN}
 	],
 	mafia:[
@@ -156,6 +159,14 @@ J.descriptions = {
 	},
 	Gunsmith: {
 		description: "You can give a gun to people during the night.",
+		rules: []
+	},
+	Armorsmith: {
+		description: "You can give a piece of armor to people during the night.",
+		rules: []
+	},
+	Baker: {
+		description: "You can give bread to people at night so they can perform another action.",
 		rules: []
 	},
 	Consort: {
@@ -299,7 +310,7 @@ J.descriptions = {
 		rules: []
 	},
 	'Town Random': {
-		description: "Spawns:<br> Citizen<br>Sheriff<br>Doctor<br>Lookout<br>Detective<br>Bus Driver<br>Escort<br>Vigilante<br>Mayor<br>Bodyguard<br>Gunsmith<br>Veteran",
+		description: "Spawns:<br> Citizen<br>Sheriff<br>Doctor<br>Lookout<br>Detective<br>Bus Driver<br>Escort<br>Vigilante<br>Mayor<br>Bodyguard<br>Gunsmith<br>Armorsmith<br>Veteran<br>Baker",
 		rules: []
 	},
 	'Town Investigative': {
@@ -307,11 +318,11 @@ J.descriptions = {
 		rules: []
 	},
 	'Town Protective': {
-		description: "Spawns:<br>Doctor<br>Bus Driver<br>Escort<br>Bodyguard",
+		description: "Spawns:<br>Doctor<br>Bus Driver<br>Escort<br>Bodyguard<br>Armorsmith",
 		rules: []
 	},
 	'Town Killing': {
-		description: "Spawns:<br>Vigilante<br>Bodyguard<br>Veteran",
+		description: "Spawns:<br>Vigilante<br>Bodyguard<br>Veteran<br>Gunsmith",
 		rules: []
 	},
 	'Yakuza Random': {
@@ -583,7 +594,7 @@ function setGraveYard(graveYard_o){
 	var color;
 	var role_li;
 	for (var i = 0; i < graveYard_o.length; i++){
-		if(graveYard_o[i].roleName === user.displayName)
+		if(graveYard_o[i].name === user.displayName)
 			gameState.isAlive = false;
 		role_li = $('<li>'+graveYard_o[i].roleName+'</li>');
 		role_li[0].style.color = graveYard_o[i].color;
@@ -593,7 +604,7 @@ function setGraveYard(graveYard_o){
 
 function setFrame(){
 	var fSpinner = $("#frameChoiceSpinner");
-	if(gameState.playerLists[J.type][gameState.commandsIndex] === 'Frame'){
+	if(gameState.playerLists[J.type][gameState.commandsIndex] === 'Frame' && gameState.isAlive){
 		fSpinner.show();
 		fSpinner.unbind();
 		fSpinner.change(function(){
@@ -611,13 +622,18 @@ function setFrame(){
 function setCommandsLabel(label){
 	if(label === 'Gun')
 		label = 'Give Gun';
+	if(label === 'Armor')
+		label = 'Give Armor';
 	$('#commandLabel').html(label);
 }
 
 function refreshPlayers(){
 	var playerLists = gameState.playerLists;
 	var playerListType = playerLists[J.type][gameState.commandsIndex % playerLists[J.type].length];
-	gameState.visiblePlayers = playerLists[playerListType];
+	if(gameState.isAlive)
+		gameState.visiblePlayers = playerLists[playerListType];
+	else
+		gameState.visiblePlayers = [];
 	if(gameState.isDay && gameState.isAlive)
 		gameState.visiblePlayers.push({playerName:"Skip Day", playerActive: true, playerVote: gameState.skipVote, playerSelected: gameState.isSkipping});
 	else
@@ -707,6 +723,8 @@ function sendAction(target, name){
 			command = 'swap2';
 		else if(command === "Give Gun")
 			command = 'gun';
+		else if(command === "Give Armor")
+			command = 'armor';
 		message = command + " " + name;
 		if(command === "Vote" && name == "Skip Day")
 			message = "skip day";
@@ -836,6 +854,8 @@ function setHost(bool){
 			web_send({message: J.startGame});	
 	});
 	leaveButton.on("click", function(){
+		$("#pregame_messages").empty();
+		console.log("cleared");
 		web_send({message: "leaveGame"});
 	});
 }
@@ -892,6 +912,9 @@ function handleObject(object){
 		if(hasType(J.roleInfo, object.type))
 			setRoleInfo(object.roleInfo);
 
+		if(hasType(J.graveYard, object.type))
+			setGraveYard(object.graveYard);
+
 		if(object[J.isDay] !== undefined)
 			gameState.isDay = object[J.isDay];
 		if(object[J.showButton] !== undefined)
@@ -907,9 +930,6 @@ function handleObject(object){
 
 		if(hasType(J.roles, object.type))
 			setRolesList(object.roles);
-
-		if(hasType(J.graveYard, object.type))
-			setGraveYard(object.graveYard);
 
 		if(hasType(J.dayLabel, object.type))
 			setDayLabel(object.dayLabel);
@@ -1074,7 +1094,7 @@ function login(){
 		var errorBox = $("#errorCode");
 		if(error.code === "auth/wrong-password"){
 			errorBox.text('Incorrect password');
-		}else if(error.code === "auth/user-not-found"){
+		}else if(error.code === "auth/user-not-found" || error.code === "auth/invalid-email"){
 			errorBox.text('Username not found!');
 		}else{
 			console.log(error);

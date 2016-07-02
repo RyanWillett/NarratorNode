@@ -85,6 +85,7 @@ public class NodePlayer {
 	public void leaveGame() throws JSONException {
 		inst.removePlayer(this);
 		inst = null;
+		this.player = null;
 		nc.joinLobby(this);
 		nc.onLobbyListChange();
 	}

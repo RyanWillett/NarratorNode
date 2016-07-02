@@ -37,7 +37,7 @@ public class NodeSwitch implements TextInput{
     
     
     public static void main( String[] args ) throws IOException, JSONException {
-    	new NodeSwitch();
+    	new NodeSwitch().start();
     }
     
     private void setupSocket() throws IOException{
@@ -69,15 +69,21 @@ public class NodeSwitch implements TextInput{
     		in.write(message + "\n");
     }
     
+	public NodeSwitch() {
+		lobbyList = new ArrayList<>();
+    	lobbyMessages = new ArrayList<>();
+    	phoneBook = new HashMap<>();
+    	instances = new ArrayList<>();
+	}
+    
     @SuppressWarnings("unused")
-	public NodeSwitch() throws IOException, JSONException{
+	public void start()throws IOException, JSONException{
     	System.out.print("java starting");
     	if(!TEST_MODE)
     		setupSocket();
     	setupLogger();
     	
-    	lobbyList = new ArrayList<>();
-    	lobbyMessages = new ArrayList<>();
+    	
     	
     	Scanner scan;
     	if(TEST_MODE){
@@ -86,8 +92,6 @@ public class NodeSwitch implements TextInput{
             scan = new Scanner( input );
     	}
         
-    	phoneBook = new HashMap<>();
-    	instances = new ArrayList<>();
         
   
         while ((!TEST_MODE || scan.hasNextLine()) ) {
@@ -97,12 +101,8 @@ public class NodeSwitch implements TextInput{
         		
         		//addToLog(message);
                 //System.out.println("(heroku -> java): " + message);
-        		JSONObject jo = new JSONObject(message);
-        		if(jo.has("server") && jo.getBoolean("server")){
-        			handleServerMessage(jo);
-        		}else{
-        			handlePlayerMessage(jo);
-        		}
+        		handleMessage(message);
+        		
         	//i++;
         	}catch(JSONException e){
         		System.err.println("[ " + message + " ] was invalid");
@@ -122,6 +122,15 @@ public class NodeSwitch implements TextInput{
         	socket.close();
         	server.close();
         }
+    }
+    
+    public void handleMessage(String message) throws JSONException{
+    	JSONObject jo = new JSONObject(message);
+		if(jo.has("server") && jo.getBoolean("server")){
+			handleServerMessage(jo);
+		}else{
+			handlePlayerMessage(jo);
+		}
     }
     
     public Instance getInstance(String name){
