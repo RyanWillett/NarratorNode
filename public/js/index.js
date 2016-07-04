@@ -141,12 +141,7 @@ J.descriptions = {
 	},
 	Arsonist: {
 		description: "You have the ability to douse someone in flammable gasoline, undouse them, or burn everyone you previously doused.",
-		rules: [{text: "Invulnerable",
-				type: "checkbox",
-				name: "arsonInvulnerability"},
-				{text: "Day Ignite",
-				type: "checkbox",
-				name: "arsonDayIgnite"}]
+		rules: ["Arson_Day_Ignite", "Arson_Invulnerability"]
 	},
 	Blackmailer: {description: "You have the ability to stop people from voting and talking.",
 		rules: []
@@ -171,9 +166,7 @@ J.descriptions = {
 	},
 	Consort: {
 		description: "You entertain at night. They will not be able to complete their night actions.",
-		rules: [{text: "Roleblock Immune",
-				type: "checkbox",
-				name: "blockImmune"}]
+		rules: ["Roleblock_immune"]
 	},
 	Bodyguard: {
 		description: "You guard people from death.  If they are attacked, you will kill the attacker but also die in the process.",
@@ -185,18 +178,7 @@ J.descriptions = {
 	},
 	'Cult Leader': {
 		description: "You can recruit anyone else into the cult. Expand until you are one with all.",
-		rules: [{text: "Cult keeps roles",
-				type: "checkbox",
-				name: "cultKeepRole"},
-				{text: "Cult PR conversion cooldown",
-				type: "number",
-				name: "cultPRCooldown"},
-				{text: "Cult conversion cooldown",
-				type: "number",
-				name: "cultConversionCD"},
-				{text: "Cult implodes upon death",
-				type: "checkbox",
-				name: "cultImplodes"}]
+		rules: ["Cult_Keeps_Roles", "Cult_pr_cooldown", "Cult_conversion_cooldown", "Cult_implodes"]
 	},
 	Detective: {
 		description: "You have the ability to find out who someone visits.",
@@ -204,9 +186,7 @@ J.descriptions = {
 	},
 	Doctor: {
 		description: "You have the ability to save someone from an attack.",
-		rules: [{text: "Knows if successful",
-				type: "checkbox",
-				name: "doctorNotification"}]
+		rules: ["Knows_if_successful"]
 	},
 	'Bus Driver': {
 		description: "You can pick up any two people to drive around.  Any action that affects one will instead affect the other.",
@@ -218,12 +198,7 @@ J.descriptions = {
 	},
 	Executioner: {
 		description: "Your sole purpose in life is to get your target killed. Do it.",
-		rules: [{text: "Exec Immune",
-				type: "checkbox",
-				name: "execImmune"},
-				{text: "Exec Immune on Win",
-				type: "checkbox",
-				name: "execWinImmune"}]
+		rules: ["Executioner_death_immune", "Executioner_win_death_immune"]
 	},
 	Framer: {
 		description: "You have the ability to change how people look to sheriffs for the night.",
@@ -231,12 +206,7 @@ J.descriptions = {
 	},
 	Godfather: {
 		description: "You are the leader of your team!  You can override who is sent to kill",
-		rules: [{text: "Night Kill Immune",
-				type: "checkbox",
-				name: "gfInvulnerability"},
-				{text: "Detection Immune",
-				type: "checkbox",
-				name: "gfUndetectable"}]
+		rules: ["Godfather_Undetectable", "Godfather_Invulnerable"]
 	},
 	Janitor: {
 		description: "You have the ability to hide the role of a person from being annouced to the town.",
@@ -248,11 +218,11 @@ J.descriptions = {
 	},
 	Amnesiac: {
 		description: "You can permanently change your role to one in the graveyard.",
-		rules: []
+		rules: ["amnesiac_keeps_charge"]
 	},
 	Survivor: {
 		description: "Your goal is simply to survive till the end.  You do not care who wins or loses.",
-		rules: []
+		rules: ["survivor_vests"]
 	},
 	Lookout: {
 		description: "You have the ability to find out all who visit someone.",
@@ -264,24 +234,15 @@ J.descriptions = {
 	},
 	'Mass Murderer': {
 		description: "You have the ability to kill everyone who visits your night target.",
-		rules: [{text: "Invulnerable",
-				type: "checkbox",
-				name: "mmInvulnerability"}, 
-				{text: "Spree Delay",
-				type: "number",
-				name: "mmDelay"}]
+		rules: ["MM_INVULNERABILITY", "MM_spree_delay"]
 	},
 	Mayor: {
 		description: "You are the leader of the town!  At any point during the day, you can reveal yourself and gain extra votes.",
-		rules: [{text: "Vote Power",
-				name: "mayorVote",
-				type: "number"}]
+		rules: ["Extra_Votes"]
 	},
 	'Serial Killer': {
 		description: "You are a crazed psychopath trying to kill everyone. Do it.",
-		rules: [{text: "Invulnerable",
-				type: "checkbox",
-				name: "skInvulnerability"}]
+		rules: ["Sk_Invulnerability"]
 	},
 	Sheriff: {
 		description: "You have the ability to see what team someone is on.",
@@ -289,21 +250,15 @@ J.descriptions = {
 	},
 	Veteran: {
 		description: "You have the ability to kill all who visit you when you are on alert.",
-		rules: [{text: "Charges",
-				type: "number",
-				name: "vetShots"}]
+		rules: ["Number of nights to go on alert"]
 	},
 	Vigilante: {
 		description: "You have the ability to kill people at night.",
-		rules: [{text: "Charges",
-				type: "number",
-				name: "vigShots"}]
+		rules: ["Number_of_bullets"]
 	},
 	Witch: {
 		description: "You have the ability to change someone else's action target.",
-		rules: [{text: "Leaves Feedback",
-				type: "checkbox",
-				name: "witchFeedback"}]
+		rules: ["Witch_Feedback"]
 	},
 	'Any Random': {
 		description: "Spawns any role.",
@@ -389,18 +344,21 @@ function sendRules(){
 	var toSend = {};
 	toSend.message = J.ruleChange;
 	toSend[J.ruleChange] = gameState.rules;
+	console.log(gameState.rules);
 	web_send(toSend);
 }
 
+var targ;
 function onRuleClickChange(e){
 	e = e.target;
+	targ = e;
 	var value = e.checked;
 	var name = $("#roleDescriptionLabel").text();
 	var info = J.descriptions[name];
 	var i = e.parentElement.id.substring(1);
 	i = parseInt(i);
 	var rule = info.rules[i];
-	gameState.rules[rule.name] = value;
+	gameState.rules[rule].val = value;
 
 	sendRules();
 }
@@ -413,7 +371,7 @@ function onRuleValueChange(e){
 	var i = e.parentElement.id.substring(1);
 	i = parseInt(i);
 	var rule = info.rules[i];
-	gameState.rules[rule.name] = value;
+	gameState.rules[rule].val = value;
 
 	sendRules();
 }
@@ -421,22 +379,23 @@ function onRuleValueChange(e){
 function setRegularRules(){
 	$(".general_rules").unbind();
 	$(".general_rules").prop('disabled', !gameState.isHost);
-	$("#dayStartRule").prop('checked', gameState.rules.dayStart);
-	$("#nightLengthRule").val(gameState.rules.nightLength);
-	$("#dayLengthRule").val(gameState.rules.dayLength);
+	$("#dayStartRule").prop('checked', gameState.rules["Day_Start"].val);
+	$("#nightLengthRule").val(gameState.rules["Night_Length"].val);
+	$("#dayLengthRule").val(gameState.rules["Day_Length"].val);
 
 	if(!gameState.isHost)
 		return;
+
 	$("#dayStartRule").click(function(e){
-		gameState.rules.dayStart = e.target.checked;
+		gameState.rules["Day_Start"].val = e.target.checked;
 		sendRules();
 	});
 	$("#nightLengthRule").bind('keyup input', function(e){
-		gameState.rules.nightLength = parseInt(e.target.value);
+		gameState.rules["Night_Length"].val = parseInt(e.target.value);
 		sendRules();
 	});
 	$("#dayLengthRule").bind('keyup input', function(e){
-    	gameState.rules.dayLength = parseInt(e.target.value);
+    	gameState.rules["Day_Length"].val = parseInt(e.target.value);
 		sendRules();
 	});
 }
@@ -453,20 +412,26 @@ function setRules(name, color){
 	header.css('color', color);
 	$('#roleDescriptionText').html(info.description);
 
-	var rule, element, input;
+	var rule, element, input, id, type, val;
 	for (var i = 0; i < info.rules.length; i++){
-		rule = info.rules[i];
+		id = info.rules[i];
+		rule = gameState.rules[id];
 		element = $('#r' + i);
-		element.html(rule.text + " <input class='numberInput' type=" + rule.type + ">");
+		val = rule.val;
+		if(Number(rule.val) === rule.val && rule.val % 1 === 0)
+			type = "number";
+		else
+			type = "checkbox";
+		element.html(rule.name + " <input class='numberInput' type=" + type + ">");
 		element.show();
 		input = $('#r' + i + " input");
 		input.unbind();
-		if(rule.type === 'checkbox'){
-			input.prop('checked', gameState.rules[rule.name]);
+		if(type === 'checkbox'){
+			input.prop('checked', rule.val);
 			if(gameState.isHost)
 				input.click(onRuleClickChange);
 		}else{
-			input.val(gameState.rules[rule.name]);
+			input.val(rule.val);
 			if(gameState.isHost)
 				input.bind('keyup input', onRuleValueChange);
 		}

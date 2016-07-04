@@ -27,6 +27,9 @@ import shared.logic.support.Constants;
 import shared.logic.support.Random;
 import shared.logic.support.RoleTemplate;
 import shared.logic.support.StringChoice;
+import shared.logic.support.rules.Rule;
+import shared.logic.support.rules.RuleBool;
+import shared.logic.support.rules.RuleInt;
 import shared.logic.support.rules.Rules;
 import shared.logic.templates.BasicRoles;
 import shared.roles.Blocker;
@@ -50,9 +53,9 @@ public class Instance implements NarratorListener{
 		n = Narrator.Default();
 		
 		Rules r = n.getRules();
-        r.DAY_START = Narrator.DAY_START;
-        r.DAY_LENGTH = 5;
-        r.NIGHT_LENGTH = 2;
+		r.setBool(Rules.DAY_START, Narrator.DAY_START);
+		r.setInt(Rules.DAY_LENGTH, 5);
+		r.setInt(Rules.NIGHT_LENGTH, 2);
         
         th = new TextHandler(n, nc, new PlayerList());
 	}
@@ -125,7 +128,7 @@ public class Instance implements NarratorListener{
 	
 	private long timerStart;
 	private long getEndTime(){
-		int length = n.isDay() ? n.getRules().DAY_LENGTH : n.getRules().NIGHT_LENGTH; 
+		int length = n.isDay() ? n.getRules().getInt(Rules.DAY_LENGTH) : n.getRules().getInt(Rules.NIGHT_LENGTH); 
 		return (length * 60000) - (System.currentTimeMillis() - timerStart);
 	}
 	
@@ -139,7 +142,7 @@ public class Instance implements NarratorListener{
 		timer = new Thread(new Runnable(){
 			public void run() {
 				try {
-					int length = n.isDay() ? n.getRules().DAY_LENGTH : n.getRules().NIGHT_LENGTH;
+					int length = n.isDay() ? n.getRules().getInt(Rules.DAY_LENGTH) : n.getRules().getInt(Rules.NIGHT_LENGTH);
 					Thread.sleep(60000 * length);
 				} catch (InterruptedException e) {
 					return;
@@ -340,33 +343,25 @@ public class Instance implements NarratorListener{
 	}
 	
 	private void addJRules(JSONObject state) throws JSONException{
-		JSONObject rules = new JSONObject();
-		Rules r = n.getRules();
-		rules.put("dayLength", r.DAY_LENGTH);
-		rules.put("dayStart", r.DAY_START);
-		rules.put("nightLength", r.NIGHT_LENGTH);
-		rules.put("doctorNotification", r.doctorKnowsIfTargetIsAttacked);
-		rules.put("vigShots", r.vigilanteShots);
-		rules.put("vetShots", r.vetAlerts);
-		rules.put("mayorVote", r.mayorVoteCount);
-		rules.put("blockImmune", r.blockersRoleBlockImmune);
-		rules.put("execImmune", r.exeuctionerImmune);
-		rules.put("execWinImmune", r.exeuctionerWinImmune);
-		rules.put("witchFeedback", r.witchLeavesFeedback);
-		rules.put("skInvulnerability", r.serialKillerIsInvulnerable);
-		rules.put("arsonInvulnerability", r.arsonInvlunerable);
-		rules.put("arsonDayIgnite", r.arsonDayIgnite);
-		rules.put("mmInvulnerability", r.mmInvulnerable);
-		rules.put("mmDelay", r.mmSpreeDelay);
-		rules.put("cultKeepRole", r.cultKeepsRoles);
-		rules.put("cultPRCooldown", r.cultPowerRoleCooldown);
-		rules.put("cultConversionCD", r.cultConversionCooldown);
-		rules.put("cultImplodes", r.cultImplodesOnLeaderDeath);
-		rules.put("gfInvulnerability", r.gfInvulnerable);
-		rules.put("gfUndetectable", r.gfUndetectable);
+		JSONObject jRules = new JSONObject();
+		Rules rules = n.getRules();
+		Rule r;
+		JSONObject ruleObject;
+		for(String key: rules.rules.keySet()){
+			ruleObject = new JSONObject();
+			r = rules.getRule(key);
+			ruleObject.put("id", r.id);
+			ruleObject.put("name", r.name);
+			if(r.getClass() == RuleInt.class)
+				ruleObject.put("val", ((RuleInt) r).val);
+			else
+				ruleObject.put("val", ((RuleBool) r).val);
+			jRules.put(r.id, ruleObject);
+		}
+		
 		
 		state.getJSONArray(JSONConstants.type).put(JSONConstants.rules);
-		state.put(JSONConstants.rules, rules);
+		state.put(JSONConstants.rules, jRules);
 	}
 	
 	void sendGameState(Player p) throws JSONException{
@@ -548,28 +543,18 @@ public class Instance implements NarratorListener{
     		if(message.equals(JSONConstants.ruleChange)){
     			Rules r = n.getRules();
     			jo = jo.getJSONObject(JSONConstants.ruleChange);
-    			r.DAY_LENGTH = jo.getInt("dayLength");
-    			r.NIGHT_LENGTH = jo.getInt("nightLength");
-    			r.DAY_START = jo.getBoolean("dayStart");
-    			r.doctorKnowsIfTargetIsAttacked = jo.getBoolean("doctorNotification");
-    			r.vigilanteShots = jo.getInt("vigShots");
-    			r.vetAlerts = jo.getInt("vetShots");
-    			r.mayorVoteCount = jo.getInt("mayorVote");
-    			r.blockersRoleBlockImmune = jo.getBoolean("blockImmune");
-    			r.exeuctionerImmune = jo.getBoolean("execImmune");
-    			r.exeuctionerWinImmune = jo.getBoolean("execWinImmune");
-    			r.witchLeavesFeedback = jo.getBoolean("witchFeedback");
-    			r.serialKillerIsInvulnerable = jo.getBoolean("skInvulnerability");
-    			r.arsonInvlunerable = jo.getBoolean("arsonInvulnerability");
-    			r.arsonDayIgnite = jo.getBoolean("arsonDayIgnite");
-    			r.mmInvulnerable = jo.getBoolean("mmInvulnerability");
-    			r.mmSpreeDelay = jo.getInt("mmDelay");
-    			r.cultKeepsRoles = jo.getBoolean("cultKeepRole");
-    			r.cultPowerRoleCooldown = jo.getInt("cultPRCooldown");
-    			r.cultConversionCooldown = jo.getInt("cultConversionCD");
-    			r.cultImplodesOnLeaderDeath = jo.getBoolean("cultImplodes");
-    			r.gfInvulnerable = jo.getBoolean("gfInvulnerability");
-    			r.gfUndetectable = jo.getBoolean("gfUndetectable");
+    			JSONObject inputJRule;
+    			for(String id: r.rules.keySet()){
+    				inputJRule = jo.getJSONObject(id);
+    				try{
+    					int val = inputJRule.getInt("val");
+    					r.setInt(id, val);
+    				}catch(JSONException e){
+    					System.out.println(id);
+    					boolean val = inputJRule.getBoolean("val");
+    					r.setBool(id, val);
+    				}
+    			}
     			
     			JSONObject state = GetGUIObject();
     			addJRules(state);
