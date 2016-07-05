@@ -1,5 +1,7 @@
 package json;
 
+import java.util.Collection;
+
 public class JSONConstants {
 	public static final String guiUpdate = "guiUpdate";
 
@@ -56,6 +58,8 @@ public class JSONConstants {
 	public static final String playerSelected = "playerSelected";
 	public static final String isSkipping = "isSkipping";
 	public static final String playerActive = "playerActive";
+
+	public static final String factions = "factions";
 
 
 

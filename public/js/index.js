@@ -64,237 +64,6 @@ J.ruleChange = "ruleChange";
 J.skipVote = "skipVote";
 J.isSkipping = "isSkipping";
 
-J.TOWN = "#6495ED";
-J.MAFIA = "#FF0000";
-J.YAKUZA = "#FFD700";
-
-J.catalogue = {
-	town:[
-		{name: 'Citizen',    color: J.TOWN},
-		{name: 'Sheriff',    color: J.TOWN},
-		{name: 'Detective',  color: J.TOWN},
-		{name: 'Lookout',    color: J.TOWN},
-		{name: 'Doctor',     color: J.TOWN},
-		{name: 'Bodyguard',  color: J.TOWN},
-		{name: 'Escort',     color: J.TOWN},
-		{name: 'Gunsmith',   color: J.TOWN},
-		{name: 'Armorsmith', color: J.TOWN},
-		{name: 'Baker',      color: J.TOWN},
-		{name: 'Bus Driver', color: J.TOWN},
-		{name: 'Veteran',    color: J.TOWN},
-		{name: 'Vigilante',  color: J.TOWN},
-		{name: 'Baker',      color: J.TOWN},
-		{name: 'Mayor',      color: J.TOWN}
-	],
-	mafia:[
-		{name: 'Mafioso',     color: J.MAFIA},
-		{name: 'Godfather',   color: J.MAFIA},
-		{name: 'Consort',     color: J.MAFIA},
-		{name: 'Chauffeur',   color: J.MAFIA},
-		{name: 'Agent',       color: J.MAFIA},
-		{name: 'Blackmailer', color: J.MAFIA},
-		{name: 'Framer',      color: J.MAFIA},
-		{name: 'Janitor',     color: J.MAFIA},
-	],
-	yakuza:[
-		{name: 'Mafioso',     color: J.YAKUZA},
-		{name: 'Godfather',   color: J.YAKUZA},
-		{name: 'Consort',     color: J.YAKUZA},
-		{name: 'Chauffeur',   color: J.YAKUZA},
-		{name: 'Agent',       color: J.YAKUZA},
-		{name: 'Blackmailer', color: J.YAKUZA},
-		{name: 'Framer',      color: J.YAKUZA},
-		{name: 'Janitor',     color: J.YAKUZA},
-	],
-	neutrals:[
-		{name: 'Serial Killer', color: "#8B4513"},
-		{name: 'Arsonist',      color: "#FF8C00"},
-		{name: 'Mass Murderer', color: "#CD853E"},
-		{name: 'Witch',         color: "#666600"},
-		{name: 'Cultist',       color: "#D5E68C"},
-		{name: 'Cult Leader',   color: "#D5E68C"},
-		{name: 'Jester',        color: "#DDA0DD"},
-		{name: 'Amnesiac',      color: "#DDA0DD"},
-		{name: 'Survivor',      color: "#DDA0DD"},
-		{name: 'Executioner',   color: "#DDA0DD"}
-	],
-	randoms:[
-		{name: "Any Random",         color: "#FFFFFF"},
-		{name: "Town Random",        color: J.TOWN},
-		{name: "Town Investigative", color: J.TOWN},
-		{name: "Town Protective",    color: J.TOWN},
-		{name: "Town Killing",       color: J.TOWN},
-		{name: "Mafia Random",       color: J.MAFIA},
-		{name: "Yakuza Random",      color: J.YAKUZA},
-		{name: "Neutral Random",     color: "#888888"}
-	]
-};
-
-J.descriptions = {
-	Citizen: {
-		description: "During the day you are a voice of reason.  You don't do anything at night.",
-		rules: []
-	},
-	Agent: {
-		description: "You can stalk someone to find out who they visited and who visited them.",
-		rules: []
-	},
-	Arsonist: {
-		description: "You have the ability to douse someone in flammable gasoline, undouse them, or burn everyone you previously doused.",
-		rules: ["Arson_Day_Ignite", "Arson_Invulnerability"]
-	},
-	Blackmailer: {description: "You have the ability to stop people from voting and talking.",
-		rules: []
-	},
-	Escort: {
-		description: "You entertain at night. They will not be able to complete their night actions.",
-		rules: [{text: "Roleblock Immune",
-				type: "checkbox",
-				name: "blockImmune"}]
-	},
-	Gunsmith: {
-		description: "You can give a gun to people during the night.",
-		rules: []
-	},
-	Armorsmith: {
-		description: "You can give a piece of armor to people during the night.",
-		rules: []
-	},
-	Baker: {
-		description: "You can give bread to people at night so they can perform another action.",
-		rules: []
-	},
-	Consort: {
-		description: "You entertain at night. They will not be able to complete their night actions.",
-		rules: ["Roleblock_immune"]
-	},
-	Bodyguard: {
-		description: "You guard people from death.  If they are attacked, you will kill the attacker but also die in the process.",
-		rules: []
-	},
-	Cultist: {
-		description: "You are part of the cult.  Collaborate with your leader to convert someone.",
-		rules: []
-	},
-	'Cult Leader': {
-		description: "You can recruit anyone else into the cult. Expand until you are one with all.",
-		rules: ["Cult_Keeps_Roles", "Cult_pr_cooldown", "Cult_conversion_cooldown", "Cult_implodes"]
-	},
-	Detective: {
-		description: "You have the ability to find out who someone visits.",
-		rules: []
-	},
-	Doctor: {
-		description: "You have the ability to save someone from an attack.",
-		rules: ["Knows_if_successful"]
-	},
-	'Bus Driver': {
-		description: "You can pick up any two people to drive around.  Any action that affects one will instead affect the other.",
-		rules: []
-	},
-	Chauffeur: {
-		description: "You can pick up any two people to drive around.  Any action that affects one will instead affect the other.",
-		rules: []
-	},
-	Executioner: {
-		description: "Your sole purpose in life is to get your target killed. Do it.",
-		rules: ["Executioner_death_immune", "Executioner_win_death_immune"]
-	},
-	Framer: {
-		description: "You have the ability to change how people look to sheriffs for the night.",
-		rules: []
-	},
-	Godfather: {
-		description: "You are the leader of your team!  You can override who is sent to kill",
-		rules: ["Godfather_Undetectable", "Godfather_Invulnerable"]
-	},
-	Janitor: {
-		description: "You have the ability to hide the role of a person from being annouced to the town.",
-		rules: []
-	},
-	Jester: {
-		description: "Your goal is to get yourself lynched.  Do it through any means necessary.",
-		rules: []
-	},
-	Amnesiac: {
-		description: "You can permanently change your role to one in the graveyard.",
-		rules: ["amnesiac_keeps_charge"]
-	},
-	Survivor: {
-		description: "Your goal is simply to survive till the end.  You do not care who wins or loses.",
-		rules: ["survivor_vests"]
-	},
-	Lookout: {
-		description: "You have the ability to find out all who visit someone.",
-		rules: []
-	},
-	Mafioso: {
-		description: "You are a minion of the Mafia.  Collaborate on who to kill during the night, and cause havoc during the day.",
-		rules: []
-	},
-	'Mass Murderer': {
-		description: "You have the ability to kill everyone who visits your night target.",
-		rules: ["MM_INVULNERABILITY", "MM_spree_delay"]
-	},
-	Mayor: {
-		description: "You are the leader of the town!  At any point during the day, you can reveal yourself and gain extra votes.",
-		rules: ["Extra_Votes"]
-	},
-	'Serial Killer': {
-		description: "You are a crazed psychopath trying to kill everyone. Do it.",
-		rules: ["Sk_Invulnerability"]
-	},
-	Sheriff: {
-		description: "You have the ability to see what team someone is on.",
-		rules: []
-	},
-	Veteran: {
-		description: "You have the ability to kill all who visit you when you are on alert.",
-		rules: ["Number of nights to go on alert"]
-	},
-	Vigilante: {
-		description: "You have the ability to kill people at night.",
-		rules: ["Number_of_bullets"]
-	},
-	Witch: {
-		description: "You have the ability to change someone else's action target.",
-		rules: ["Witch_Feedback"]
-	},
-	'Any Random': {
-		description: "Spawns any role.",
-		rules: []
-	},
-	'Town Random': {
-		description: "Spawns:<br> Citizen<br>Sheriff<br>Doctor<br>Lookout<br>Detective<br>Bus Driver<br>Escort<br>Vigilante<br>Mayor<br>Bodyguard<br>Gunsmith<br>Armorsmith<br>Veteran<br>Baker",
-		rules: []
-	},
-	'Town Investigative': {
-		description: "Spawns:<br>Sheriff<br>Lookout<br>Detective",
-		rules: []
-	},
-	'Town Protective': {
-		description: "Spawns:<br>Doctor<br>Bus Driver<br>Escort<br>Bodyguard<br>Armorsmith",
-		rules: []
-	},
-	'Town Killing': {
-		description: "Spawns:<br>Vigilante<br>Bodyguard<br>Veteran<br>Gunsmith",
-		rules: []
-	},
-	'Yakuza Random': {
-		description: "Spawns:<br>Mafioso<br>Godfather<br>Consort<br>Chauffeur<br>Agent<br>Blackmailer<br>Framer<br>Janitor",
-		rules: []
-	},
-	'Mafia Random': {
-		description: "Spawns:<br>Mafioso<br>Godfather<br>Consort<br>Chauffeur<br>Agent<br>Blackmailer<br>Framer<br>Janitor",
-		rules: []
-	},
-	'Neutral Random': {
-		description: "Spawns<br>Serial Killer<br>Arsonist<br>Mass Murderer<br>Witch<br>Cultist<br>Cult Leader<br>Amnesiac<br>Jester<br>Executioner",
-		rules: []
-	}
-};
-
-
 function addToChat(message){
 	if (message.length === 0)
 		return;
@@ -344,7 +113,6 @@ function sendRules(){
 	var toSend = {};
 	toSend.message = J.ruleChange;
 	toSend[J.ruleChange] = gameState.rules;
-	console.log(gameState.rules);
 	web_send(toSend);
 }
 
@@ -367,11 +135,13 @@ function onRuleValueChange(e){
 	e = e.target;
 	var value = parseInt(e.value);
 	var name = $("#roleDescriptionLabel").text();
-	var info = J.descriptions[name];
+	var color = $("#roleDescriptionLabel").css('color');
+	color = convertColor(color);
+	var member = gameState.factions[name+color];
 	var i = e.parentElement.id.substring(1);
 	i = parseInt(i);
-	var rule = info.rules[i];
-	gameState.rules[rule].val = value;
+	var ruleName = member.rules[i];
+	gameState.rules[ruleName].val = value;
 
 	sendRules();
 }
@@ -401,10 +171,12 @@ function setRegularRules(){
 }
 
 J.MAX_RULES = 4;
-function setRules(name, color){
+function setRules(obj){
+	var name = obj.name;
+	var color = obj.color;
 	setRegularRules();
 	$("#rules_pane").show();
-	var info = J.descriptions[name];
+	var info = obj
 	if(info === undefined)
 		return;
 	var header = $('#roleDescriptionLabel');
@@ -412,34 +184,38 @@ function setRules(name, color){
 	header.css('color', color);
 	$('#roleDescriptionText').html(info.description);
 
-	var rule, element, input, id, type, val;
-	for (var i = 0; i < info.rules.length; i++){
-		id = info.rules[i];
-		rule = gameState.rules[id];
-		element = $('#r' + i);
-		val = rule.val;
-		if(Number(rule.val) === rule.val && rule.val % 1 === 0)
-			type = "number";
-		else
-			type = "checkbox";
-		element.html(rule.name + " <input class='numberInput' type=" + type + ">");
-		element.show();
-		input = $('#r' + i + " input");
-		input.unbind();
-		if(type === 'checkbox'){
-			input.prop('checked', rule.val);
-			if(gameState.isHost)
-				input.click(onRuleClickChange);
-		}else{
-			input.val(rule.val);
-			if(gameState.isHost)
-				input.bind('keyup input', onRuleValueChange);
-		}
+	var rule, element, input, id, type, val, i;
+	if(info.rules === undefined)
+		i = 0;
+	else{
+		for (i = 0; i < info.rules.length; i++){
+			id = info.rules[i];
+			rule = gameState.rules[id];
+			element = $('#r' + i);
+			val = rule.val;
+			if(Number(rule.val) === rule.val && rule.val % 1 === 0)
+				type = "number";
+			else
+				type = "checkbox";
+			element.html(rule.name + " <input class='numberInput' type=" + type + ">");
+			element.show();
+			input = $('#r' + i + " input");
+			input.unbind();
+			if(type === 'checkbox'){
+				input.prop('checked', rule.val);
+				if(gameState.isHost)
+					input.click(onRuleClickChange);
+			}else{
+				input.val(rule.val);
+				if(gameState.isHost)
+					input.bind('keyup input', onRuleValueChange);
+			}
+				
 			
-		
-		input.prop('disabled', !gameState.isHost);
+			input.prop('disabled', !gameState.isHost);
+		}
 	}
-	for (i =info.rules.length; i < J.MAX_RULES; i++){
+	for (; i < J.MAX_RULES; i++){
 		element = $('#r' + i);
 		element.hide();
 	}
@@ -456,10 +232,9 @@ function convertColor(color){
 }
 
 function getMemberFromClick(e){
-	var obj = {}
-	obj.name = e.innerHTML;
-	obj.color = convertColor(e.style.color);
-	return obj;
+	var name = e.innerHTML;
+	var color = convertColor(e.style.color);
+	return gameState.factions[name + color];
 }
 
 function addRole(name, color){
@@ -482,13 +257,16 @@ function removeRole(name, color){
 }
 
 function setCatalogue(cata){
+	if(cata === undefined)
+		return;
 	$("#rules_pane").hide();
 	var pane = $("#role_catalogue_clickable");
 	pane.empty();
 
-	for (var i = 0; i < cata.length; i++){
-		role_li = $('<li>'+cata[i].name+'</li>');
-		role_li[0].style.color = cata[i].color;
+	var role_li;
+	for (var i = 0; i < cata.members.length; i++){
+		role_li = $('<li>'+cata.members[i].name+'</li>');
+		role_li[0].style.color = cata.members[i].color;
 		role_li.appendTo(pane);
 		if(!gameState.started){
 			role_li.addClass("pregame_li");
@@ -498,12 +276,12 @@ function setCatalogue(cata){
 		pane.unbind();
 		pane.on("click", "li", function (e){
 			var obj = getMemberFromClick(e.target);
-			setRules(obj.name, obj.color);
+			setRules(obj);
 		});
 		pane.on("dblclick", "li", function(e){
 			var memb = getMemberFromClick(e.target);
 			
-			setRules(memb.name, memb.color);
+			setRules(memb);
 			addRole(memb.name, memb.color);
 		});
 	}
@@ -540,12 +318,12 @@ function setRolesList(rolesList_o){
 			rolesList.unbind();
 			rolesList.on("dblclick", ".pregame_li", function(e){
 				var memb = getMemberFromClick(e.target);
-				setRules(memb.name, memb.color);
+				setRules(memb);
 				removeRole(memb.name, memb.color);
 			});
 			rolesList.on("click", ".pregame_li", function(e){
 				var memb = getMemberFromClick(e.target);
-				setRules(memb.name, memb.color);
+				setRules(memb);
 			});
 		}
 	}
@@ -589,6 +367,10 @@ function setCommandsLabel(label){
 		label = 'Give Gun';
 	if(label === 'Armor')
 		label = 'Give Armor';
+	if(label === 'swap1')
+		label = 'Pickup 1'
+	if(label === 'swap2')
+		label = 'Pickup 2'
 	$('#commandLabel').html(label);
 }
 
@@ -676,11 +458,8 @@ function sendAction(target, name){
 	var command = $('#commandLabel').text();
 
 	var message;
-	if(!target){//untarget
-		if(command === "Vote"){
-			message = "unvote";
-		}else
-			message = command + " untarget";
+	if(!target && command === "Vote"){//untarget
+		message = "unvote";
 	}else{
 		if(command === "Pickup 1")
 			command = 'swap1';
@@ -742,6 +521,10 @@ function setTrim(color){
 		trimObjects[i].style.color=color;
 		trimObjects.css('border-color', color);
 	}
+	trimObjects = $('.info-list-container');
+	for(var i = 0; i < trimObjects.length; i++){
+		trimObjects.css('border-color', color);
+	}
 }
 setTrim("#008080");
 
@@ -769,6 +552,19 @@ function showButton(bool){
 	}
 	else
 		button.hide();
+}
+
+function setFactions(){
+	var factionList = $("#team_catalogue_pane");
+	factionList.empty();
+	var factionItem, f, name;
+	var factions = gameState.factions;
+	for(var i = 0; i < factions.factionNames.length; i++){
+		name = factions.factionNames[i];
+		f = factions[name];
+		factionItem = $('<li><span style="color: ' + f.color + ';">' + f.name + '</span></li>');
+		factionList.append(factionItem);
+	}
 }
 
 function setRoleInfo(roleInfo){
@@ -820,7 +616,6 @@ function setHost(bool){
 	});
 	leaveButton.on("click", function(){
 		$("#pregame_messages").empty();
-		console.log("cleared");
 		web_send({message: "leaveGame"});
 	});
 }
@@ -871,6 +666,10 @@ function handleObject(object){
 		}
 		if(object[J.endedNight] !== undefined)
 			gameState.endedNight = object[J.endedNight];
+		if(object.factions !== undefined){
+			gameState.factions = object.factions;
+			setFactions();
+		}
 		if(object[J.isHost] !== undefined)
 			setHost(object[J.isHost]);
 
@@ -904,7 +703,7 @@ function handleObject(object){
 		if(hasType(J.rules, object.type)){
 			gameState.rules = object.rules;
 			var ele = $('#roleDescriptionLabel');
-			setRules(ele.text(), convertColor(ele.css("color")));
+			setRules(ele.text());
 		}
 		if(object.ping !== undefined){
 			$("#ping")[0].play();
@@ -1104,23 +903,7 @@ $(document).ready(function(){
 	$("#login_button")[0].onclick = login;
 	$("#signup_button")[0].onclick = signup;
 	$("#team_catalogue_pane").on("click", "li", function(e){
-		var catalog;
-		switch(e.target.innerHTML){
-		case 'Town':
-			catalog = J.catalogue.town;
-			break;
-		case 'Mafia':
-			catalog = J.catalogue.mafia;
-			break;
-		case 'Yakuza':
-			catalog = J.catalogue.yakuza;
-			break;
-		case 'Neutrals':
-			catalog = J.catalogue.neutrals;
-			break;
-		default:
-			catalog = J.catalogue.randoms;
-		}
+		var catalog = gameState.factions[e.target.innerHTML];
 		setCatalogue(catalog);
 	});
 	$(".lobby_buttons").unbind();

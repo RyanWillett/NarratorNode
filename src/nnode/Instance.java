@@ -58,6 +58,7 @@ public class Instance implements NarratorListener{
 		r.setInt(Rules.NIGHT_LENGTH, 2);
         
         th = new TextHandler(n, nc, new PlayerList());
+        fManager = new FactionManager();
 	}
 	
 	public void removePlayer(NodePlayer leaver) throws JSONException {
@@ -364,6 +365,41 @@ public class Instance implements NarratorListener{
 		state.put(JSONConstants.rules, jRules);
 	}
 	
+	FactionManager fManager;
+	
+	void addJFactions(JSONObject state) throws JSONException{
+		JSONArray fMembers, factionNames = new JSONArray();
+		JSONObject jFaction, jRT, jFactions = new JSONObject();
+		JSONObject lookup = new JSONObject();
+		for(Faction f: fManager.factions){
+			jFaction = new JSONObject();
+			fMembers = new JSONArray();
+			
+			jFaction.put("name", f.name);
+			factionNames.put(f.name);
+			jFaction.put("color", f.color);
+			
+			for(RoleTemplate rt: f.members){
+				jRT = new JSONObject();
+				jRT.put("name", rt.getName());
+				jRT.put("description", rt.getDescription());
+				jRT.put("color", rt.getColor());
+				jRT.put("rules", new JSONArray(rt.getRules()));
+				jFactions.put(rt.getName() + rt.getColor(), jRT);
+				fMembers.put(jRT);
+			}
+				
+			jFaction.put("members", fMembers);
+			jFactions.put(f.name, jFaction);
+			jFactions.put(f.color, jFaction);
+		}
+		jFactions.put("lookup", lookup);
+		jFactions.put("factionNames", factionNames);
+		
+		state.getJSONArray(JSONConstants.type).put(JSONConstants.factions);
+		state.put(JSONConstants.factions, jFactions);
+	}
+	
 	void sendGameState(Player p) throws JSONException{
 		JSONObject state = GetGUIObject();
 		addJRolesList(state);
@@ -391,6 +427,7 @@ public class Instance implements NarratorListener{
 			state.put(JSONConstants.isHost, p == host);
 			state.put(JSONConstants.host, host.getName());
 			addJRules(state);
+			addJFactions(state);
 		}
 			
 		playerJWrite(p, state);
@@ -550,7 +587,6 @@ public class Instance implements NarratorListener{
     					int val = inputJRule.getInt("val");
     					r.setInt(id, val);
     				}catch(JSONException e){
-    					System.out.println(id);
     					boolean val = inputJRule.getBoolean("val");
     					r.setBool(id, val);
     				}

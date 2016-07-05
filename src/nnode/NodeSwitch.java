@@ -273,10 +273,11 @@ public class NodeSwitch implements TextInput{
     				np.joinGame(i);
     			}else if(message.equals("joinPrivate")){
     				i = getInstance(jo.getString("hostName"));
-    				if(i != null)
+    				if(i != null){
+        				removePlayerFromLobby(np);
     					np.joinGame(i);
-    				else{
-    					np.sendLobbyMessage("Invalid host name.");
+    				}else{
+    					np.sendLobbyMessage("Couldn't find that user!");
     				}
     					
     			}

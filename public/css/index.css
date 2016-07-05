@@ -14,14 +14,19 @@ body {
 	width: 100%; 
 	height: 100%;
 	padding: 4px;
-	background-color: black;
+	background: url('../logoWide.png') no-repeat center center fixed; 
+        -webkit-background-size: cover;
+        -moz-background-size: cover;
+        -o-background-size: cover;
+        background-size: cover;
 }
+
+
 nav {
 	position: fixed;
 	width: 80%;
 	height: 280px;
 	max-height: 280px;
-	background: black;
 	margin-top: -4px;
 }
 #dayLabel{
@@ -43,21 +48,26 @@ nav {
 
 .info-list-container{
 	float:left;
-	padding-top: 25px;
-	padding-left: 15px;
+	padding: 3px;
+	margin-top: 20px;
+	margin-left: 10px;
 	width: 150px;
-	height: 280px;
-	max-height: 280px;
-	margin-top: -4px;
+	height: 100%;
+	max-height: 250px;
+	background: black;
+	border-color: blue;
+	border-style: double;
+	border-radius: 15px;
 }
 .info-header{
 	text-decoration: underline;
 	padding-top: 3px;
+
 }
 .info-list{
 	overflow: auto;
-	max-height: 210px;
 	color: white;
+	max-height: 90%
 }
 .info-list li{
 	padding: 3px;
@@ -139,7 +149,10 @@ nav {
 	font-weight: bold;
 }
 #messages{
-	padding-top: 280px;
+	position: fixed;
+	top: 280px;
+	bottom: 50px;
+	overflow-y: auto;
 	padding-bottom: 45px;
 	width: 80%;
 }
@@ -196,9 +209,9 @@ button {
 
 #pregame_messages{
 	position: absolute;
-	width: 58%;
-	top: 170px;
-	left: 0;
+	width: 50%;
+	top: 50%;
+	height: 50%;
 	padding-right: 15px;
 	padding-bottom: 50px;
 }
@@ -209,6 +222,8 @@ button {
 	padding-bottom: 5px;
 	padding-left: 6px;
 	color: #E8FFFF;
+	word-break: break-word;
+	word-wrap: break-word;
 }
 .headerLabel{
 	text-align: center;
@@ -217,8 +232,8 @@ button {
 .feedback{
 	color: #3BB9FF;
 }
-.chat li:nth-child(odd) { background: #131519; }
-.chat li:nth-child(even) { background: #0C090A; }
+.chat li:nth-child(odd) { background: #131519 0; }
+.chat li:nth-child(even) { background: #0C090A 9; }
 
 
 .header{
@@ -264,46 +279,50 @@ h2{
 	color:white;
 }
 
+#setup_top_div{
+	width: 100%;
+	height: 50px;
+}
+
+.tables{
+	top: 125px;
+	width: 15%;
+	position: fixed;
+	max-height: 35%;
+	border: 6px;
+	border-color: #008080;
+	border-radius: 30px;
+	border-style: double;
+	text-align: center;
+}
+
 #team_catalogue{
-	position: fixed;
-	top: 10px;
-	right: 22%;
-	height: 250px;
-	width: 20%;
-}
-
-#role_catalogue{
-	position: fixed;
-	right: 22%;
-	width: 20%;
-	top: 175px;
-	height: 33%;
-}
-
-#ingameRolesPane{
-	position: fixed;
-	right: 0;
-	top: 10px;
-	width: 20%;
+	left: 0;
 	height: 45%;
 }
 
-#setup_roles_list{
-	height: 95%;
-	max-height: 95%;
+#role_catalogue{
+	left: 20%;
+	height: 35%;
 }
 
-#role_catalogue_clickable{
+#rules_pane{
+	left: 40%;
+	top: 175px;
+}
+
+#ingameRolesPane{
+	right: 20%;
+}
+
+#setup_roles_list{
 	height: 100%;
 	max-height: 100%;
 }
 
 #playerListPane{
-	position: fixed;
 	right: 0;
-	top: 50%;
-	width: 20%;
-	height: 40%;
+	height: 30%;
 }
 
 #setup_players_list{
@@ -364,7 +383,6 @@ h2{
 }
 
 #lobby_messages{
-	background: red;
 	width: 80%;
 	max-width: 80%;
 }

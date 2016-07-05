@@ -77,38 +77,41 @@
   </div>
 
   <div id="setup_page" hidden>
-    <div id='team_catalogue'>
+    <div id="setup_top_div">
+      <h2>New Game</h2>
+      <h3>General Settings</h3>
+      Day Start <input id="dayStartRule" class='general_rules' type='checkbox'>
+      Day Length :  <input id="dayLengthRule" class='numberInput general_rules' type='number'> minutes 
+            NightLenght : <input id="nightLengthRule" class='numberInput general_rules' type='number'> minutes 
+    </div>
+    <div class='tables' id='team_catalogue'>
       <span class='trim'>Categories</span>
       <ul id='team_catalogue_pane' class='info-list'>
-        <li><span style="color: #6495ed;">Town</span></li>
-        <li><span style="color: #ff0000;">Mafia</span></li>
-        <li><span style="color: #ffd700;">Yakuza</span></li>
-        <li><span style="color: #888888;">Neutrals</span></li>
-        <li>Randoms</li>
       </ul>
     </div>
-    <div id='role_catalogue'>
+    <div class='tables' id='role_catalogue'>
       <span class='trim'>Available Roles</span>
       <ul id='role_catalogue_clickable' class='info-list'>
       </ul>
-      <div id='rules_pane'>
-        <span id='roleDescriptionLabel'></span>
-        <p id='roleDescriptionText'></p>
-        <br>
-        <div id='r0'></div>
-        <div id='r1'></div>
-        <div id='r2'></div>
-        <div id='r3'></div>
-      </div>
     </div>
 
-    <div id='ingameRolesPane'>
+    <div style="border-style: none;" class='tables' id='rules_pane'>
+      <span id='roleDescriptionLabel'></span>
+      <p id='roleDescriptionText'></p>
+      <br>
+      <div id='r0'></div>
+      <div id='r1'></div>
+      <div id='r2'></div>
+      <div id='r3'></div>
+    </div>
+
+    <div class='tables' id='ingameRolesPane'>
       <span class='trim centerHeader'>Roles List</span>
       <ul id='setup_roles_list' class='info-list'>
       </ul>
     </div>
 
-    <div id='playerListPane'>
+    <div class='tables' id='playerListPane'>
       <span class='trim centerHeader'>Player List</span>
       <ul id='setup_players_list' class='info-list'>
       </ul>
@@ -123,10 +126,6 @@
     </form>
     <button id='setupButtonA'></button>
     <button id='setupButtonB' hidden></button>
-    <h3>General Settings</h3>
-    Day Start <input id="dayStartRule" class='general_rules' type='checkbox'><br>
-    Day Length :  <input id="dayLengthRule" class='numberInput general_rules' type='number'> minutes <br>
-    NightLenght : <input id="nightLengthRule" class='numberInput general_rules' type='number'> minutes <br>
   </div>
 
   <div id="lobby_page" hidden>
