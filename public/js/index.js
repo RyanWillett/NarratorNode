@@ -199,8 +199,10 @@ function setRules(){
 	var teamRule = rulePane.members !== undefined;
 	if(teamRule)
 		header.attr('name', rulePane.color);
-	else
+	else{
 		header.attr('name', rulePane.name + rulePane.color);
+		$(".editTeamTrio").hide();
+	}
 	header.text(name);
 	header.css('color', color);
 
@@ -295,7 +297,6 @@ function setCatalogue(){
 	var aFaction = gameState.activeFaction;
 	if(aFaction === null)
 		return;
-	$("#rules_pane").hide();
 	$("#newTeamColor, #newTeamName, #newTeamSubmitButton").hide();
 	if(aFaction.isEditable)
 		$("#editAlliesButton, #editRolesButton, #deleteTeamButton").show();
@@ -318,11 +319,6 @@ function setCatalogue(){
 		if(!gameState.started){
 			list_item.addClass("pregame_li");
 		}
-	}
-	
-	if(aFaction.isEditable){
-		setActiveRule(aFaction);
-		setRules();
 	}
 
 
@@ -700,7 +696,6 @@ function displayTeamEditAllies(){
 }
 
 function setFactions(){
-	console.log("factions!");
 	var factionList = $("#team_catalogue_pane");
 	factionList.empty();
 	var factionItem, f, name;
@@ -724,7 +719,6 @@ function setFactions(){
 
 	$("#deleteTeamButton").unbind();
 	$("#deleteTeamButton").click(function(){
-		setMode(false, false);
 		if(gameState.editingRoles){
 			$("#availableRolesHeader").text("Available Roles");
 			setMode(false, false);
@@ -732,6 +726,7 @@ function setFactions(){
 			setRolesList(gameState.rolesList, removeRole);
 			$("#deleteTeamButton").text("Delete Team");
 		}else if(gameState.editingAllies){
+			setMode(false, false);
 			$("#availableRolesHeader").text("Available Roles");
 			setCatalogue();
 			setRolesList(gameState.rolesList, removeRole);
@@ -1057,12 +1052,15 @@ function logout(){
 	});
 }
 
+gameState.loggingIn = false;
 function login(){
+	gameState.loggingIn = true;
 	username = $("#username_field")[0].value;
 	password = $("#password_field")[0].value;
 	firebase.auth().signInWithEmailAndPassword(username + "@sc2mafia.com", password)
 	.then(function(user){
 		login_page.hidden = true;
+		gameState.loggingIn = false;
 		greetServer();
 	},
 	function error(error){
@@ -1075,6 +1073,7 @@ function login(){
 		}else{
 			console.log(error);
 		}
+		gameState.loggingIn = false;
 	});
 }
 
@@ -1132,7 +1131,7 @@ $(document).ready(function(){
 		if(gameState.activeFaction !== catalog && catalog !== undefined){
 			setMode(false, false);
 			gameState.activeFaction = catalog;
-			setActiveRule(null);
+			setActiveRule(gameState.activeFaction);
 			setRules();
 			setCatalogue(); 
 		}

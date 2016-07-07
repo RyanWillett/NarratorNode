@@ -78,7 +78,9 @@ public class Faction {
 	
 	public void makeAvailable(Member m){
 		removeFromAvailable(m.getSimpleName());
-		members.add(m.setColor(getColor()));
+		if(team != null)
+			m.setColor(getColor());
+		members.add(m);
 	}
 	
 	//class name, not given name
@@ -123,8 +125,12 @@ public class Faction {
 		for(RoleTemplate m: list){
 			if(m.isRandom())
 				members.add(m);
-			else
-				makeAvailable(((Member) m).setColor(getColor()));
+			else{
+				Member memb = (Member) m;
+				if(team != null)
+					memb.setColor(getColor());
+				makeAvailable(memb);
+			}
 		}
 	}
 	

@@ -249,6 +249,8 @@ public class StateObject {
 			for(Team t: n.getAllTeams()){
 				if(t.getName().equals(Constants.A_SKIP))
 					continue;
+				if(t == fTeam)
+					continue;
 				allyInfo = new JSONObject();
 				allyInfo.put("color", t.getColor());
 				allyInfo.put("name", t.getName());
