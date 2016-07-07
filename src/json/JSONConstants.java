@@ -1,7 +1,5 @@
 package json;
 
-import java.util.Collection;
-
 public class JSONConstants {
 	public static final String guiUpdate = "guiUpdate";
 

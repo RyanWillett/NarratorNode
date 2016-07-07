@@ -9,6 +9,13 @@
   
   <meta name="author" content="Voss" />
   
+  <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
+  <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+  <meta name="theme-color" content="#ffffff">
+
   <style type="text/css" media="all">@import "css/index.css";</style> 
 </head>
 
@@ -88,9 +95,10 @@
       <span class='trim'>Categories</span>
       <ul id='team_catalogue_pane' class='info-list'>
       </ul>
+      <button id="newTeamButton">New Team</button>
     </div>
     <div class='tables' id='role_catalogue'>
-      <span class='trim'>Available Roles</span>
+      <span id="availableRolesHeader" class='trim'>Available Roles</span>
       <ul id='role_catalogue_clickable' class='info-list'>
       </ul>
     </div>
@@ -103,10 +111,17 @@
       <div id='r1'></div>
       <div id='r2'></div>
       <div id='r3'></div>
+      <div id='r4'></div>
+      <input class='addTeamTrio' id="newTeamColor" value="#FF00FF" hidden><br>
+      <input class='addTeamTrio' id="newTeamName" placeholder="Team Name" hidden><br>
+      <button class='addTeamTrio' id="newTeamSubmitButton" hidden>Submit</button>
+      <button class='editTeamTrio' id="editAlliesButton">Edit Allies</button>
+      <button class='editTeamTrio' id="editRolesButton">Edit Roles</button>
+      <button class='editTeamTrio' id="deleteTeamButton">Delete Team</button>
     </div>
 
     <div class='tables' id='ingameRolesPane'>
-      <span class='trim centerHeader'>Roles List</span>
+      <span id='inGameRolesHeader' class='trim centerHeader'>Roles List</span>
       <ul id='setup_roles_list' class='info-list'>
       </ul>
     </div>

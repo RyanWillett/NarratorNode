@@ -5,7 +5,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 
@@ -27,9 +26,6 @@ import shared.logic.support.Constants;
 import shared.logic.support.Random;
 import shared.logic.support.RoleTemplate;
 import shared.logic.support.StringChoice;
-import shared.logic.support.rules.Rule;
-import shared.logic.support.rules.RuleBool;
-import shared.logic.support.rules.RuleInt;
 import shared.logic.support.rules.Rules;
 import shared.logic.templates.BasicRoles;
 import shared.roles.Blocker;
@@ -44,7 +40,7 @@ public class Instance implements NarratorListener{
 
 	protected Narrator n;
 	protected TextHandler th;
-	private HashMap<Player, NodePlayer> phoneBook;
+	HashMap<Player, NodePlayer> phoneBook;
 	private NodeSwitch nc;
 	
 	public Instance(NodeSwitch nc){
@@ -58,7 +54,7 @@ public class Instance implements NarratorListener{
 		r.setInt(Rules.NIGHT_LENGTH, 2);
         
         th = new TextHandler(n, nc, new PlayerList());
-        fManager = new FactionManager();
+        fManager = new FactionManager(n);
 	}
 	
 	public void removePlayer(NodePlayer leaver) throws JSONException {
@@ -106,7 +102,7 @@ public class Instance implements NarratorListener{
 		
 		return p;
 	}
-	private void playerJWrite(Player p, JSONObject j) throws JSONException{
+	public void playerJWrite(Player p, JSONObject j) throws JSONException{
 		NodePlayer np = phoneBook.get(p);
 		nc.write(np,  j);
 	}
@@ -175,262 +171,46 @@ public class Instance implements NarratorListener{
 		}
 	}
 	
-	private void addJRolesList(JSONObject state) throws JSONException{
-		JSONArray roles = new JSONArray();
-		JSONObject role;
-		for(RoleTemplate r: n.getAllRoles()){
-			role = new JSONObject();
-			role.put(JSONConstants.roleType, r.getName());
-			
-			role.put(JSONConstants.color, r.getColor());
-			roles.put(role);
-		}
-		state.getJSONArray(JSONConstants.type).put(JSONConstants.roles);
-		state.put(JSONConstants.roles, roles);
-	}
-	private JSONArray getJPlayerArray(PlayerList input) throws JSONException{
-		return getJPlayerArray(input, new PlayerList());
-	}
-	private JSONArray getJPlayerArray(PlayerList input, Player p) throws JSONException{
-		PlayerList list = new PlayerList();
-		if(p != null)
-			list.add(p);
-		return getJPlayerArray(input, list);
-	}
-	private JSONArray getJPlayerArray(PlayerList input, PlayerList selected) throws JSONException{
-		JSONArray arr = new JSONArray();
-		if(input.isEmpty())
-			return arr;
-		PlayerList allPlayers = n.getAllPlayers();
-		
-		JSONObject jo;
-		for(Player pi: input){
-			jo = new JSONObject();
-			jo.put(JSONConstants.playerName, pi.getName());
-			jo.put(JSONConstants.playerIndex, allPlayers.indexOf(pi) + 1);
-			jo.put(JSONConstants.playerSelected, selected.contains(pi));
-			jo.put(JSONConstants.playerActive, phoneBook.get(pi).isActive());
-			if(n.isStarted() && pi.getVoters() != null){
-				jo.put(JSONConstants.playerVote, pi.getVoters().size());
-			}
-			arr.put(jo);
-		}
-			
-		
-		
-		return arr;
-	}
-	private void addJPlayerLists(JSONObject state, Player p) throws JSONException{
-		JSONObject playerLists = new JSONObject();
-		playerLists.put(JSONConstants.type, new JSONArray());
-		
-		if(n.isStarted()){
-			if(n.isDay){
-				PlayerList votes;
-				if(n.isInProgress())
-					votes = n.getLivePlayers().remove(p);
-				else
-					votes = n.getAllPlayers().remove(p);
-				if(p.isDead())
-					votes.clear();
-				JSONArray names = getJPlayerArray(votes, p.getVoteTarget());
-				playerLists.put("Vote", names);
-				playerLists.getJSONArray(JSONConstants.type).put("Vote");
-			}else{
-				String[] abilities = p.getAbilities();
-				for(String s_ability: abilities){
-					int ability = p.parseAbility(s_ability);
-					PlayerList acceptableTargets = new PlayerList();
-					for(Player potentialTarget: n.getAllPlayers()){
-						if(p.isAcceptableTarget(potentialTarget, ability)){
-							acceptableTargets.add(potentialTarget);
-						}
-					}
-					if(acceptableTargets.isEmpty())
-						continue;
-
-					JSONArray names = getJPlayerArray(acceptableTargets, p.getTargets(ability));
-					playerLists.put(s_ability, names);
-					playerLists.getJSONArray(JSONConstants.type).put(s_ability);
-				}
-				if(playerLists.getJSONArray(JSONConstants.type).length() == 0){
-					JSONArray names = getJPlayerArray(new PlayerList());
-					playerLists.put("You have no acceptable night actions tonight!", names);
-					playerLists.getJSONArray(JSONConstants.type).put("You have no acceptable night actions tonight!");
-				}
-			}
-		}else{
-			JSONArray names = getJPlayerArray(n.getAllPlayers());
-			playerLists.put("Lobby", names);
-			playerLists.getJSONArray(JSONConstants.type).put("Lobby");
-		}
-		
-		
-		state.getJSONArray(JSONConstants.type).put(JSONConstants.playerLists);
-		state.put(JSONConstants.playerLists, playerLists);
-	}
-	private void addJDayLabel(JSONObject state) throws JSONException{
-		String dayLabel;
-		if (!n.isStarted()){
-			dayLabel = "Night 0";
-		}else if(n.isDay()){
-			dayLabel = "Day " + n.getDayNumber();
-		}else{
-			dayLabel = "Night " + n.getDayNumber();
-		}
-		state.getJSONArray(JSONConstants.type).put(JSONConstants.dayLabel);
-		state.put(JSONConstants.dayLabel, dayLabel);
-	}
-	private ArrayList<Team> shouldShowTeam(Player p){
-		ArrayList<Team> teams = new ArrayList<>();
-		for(Team t: p.getTeams()){
-			if(!t.knowsTeam())
-				continue;
-			if(t.getMembers().remove(p).getLivePlayers().isEmpty())
-				continue;
-			teams.add(t);
-		}
-		return teams;			
-	}
 	
-	private void addJRoleInfo(Player p, JSONObject state) throws JSONException{
-		JSONObject roleInfo = new JSONObject();
-		roleInfo.put(JSONConstants.roleColor, p.getTeam().getColor());
-		roleInfo.put(JSONConstants.roleName, p.getRoleName());
-		roleInfo.put(JSONConstants.roleDescription, p.getRoleInfo());
-		
-		ArrayList<Team> knownTeams = shouldShowTeam(p);
-		boolean displayTeam = !knownTeams.isEmpty();
-		roleInfo.put(JSONConstants.roleKnowsTeam, displayTeam);
-		if(displayTeam){
-			JSONArray allyList = new JSONArray();
-			JSONObject allyObject;
-			for(Team group: knownTeams){
-				for(Player ally: group.getMembers().remove(p).getLivePlayers()){
-					allyObject = new JSONObject();
-					allyObject.put(JSONConstants.teamAllyName, ally.getName());
-					allyObject.put(JSONConstants.teamAllyRole, ally.getRoleName());
-					allyObject.put(JSONConstants.teamAllyColor, group.getColor());
-					allyList.put(allyObject);
-				}
-				
-			}
-			roleInfo.put(JSONConstants.roleTeam, allyList);
-		}
-
-		state.getJSONArray(JSONConstants.type).put(JSONConstants.roleInfo);
-		state.put(JSONConstants.roleInfo, roleInfo);
-	}
 	
-	private void addJGraveYard(JSONObject state) throws JSONException{
-		JSONArray graveYard = new JSONArray();
-		
-		JSONObject graveMarker;
-		String color;
-		for(Player p: n.getDeadPlayers().sortByDeath()){
-			graveMarker = new JSONObject();
-			if(p.isCleaned())
-				color = "#FFFFFF";
-			else
-				color = p.getTeam().getColor();
-			graveMarker.put(JSONConstants.color, color);
-			graveMarker.put(JSONConstants.roleName, p.getDescription());
-			graveMarker.put("name", p.getName());
-			graveYard.put(graveMarker);
-		}
-		
-		state.getJSONArray(JSONConstants.type).put(JSONConstants.graveYard);
-		state.put(JSONConstants.graveYard, graveYard);
-	}
 	
-	private void addJRules(JSONObject state) throws JSONException{
-		JSONObject jRules = new JSONObject();
-		Rules rules = n.getRules();
-		Rule r;
-		JSONObject ruleObject;
-		for(String key: rules.rules.keySet()){
-			ruleObject = new JSONObject();
-			r = rules.getRule(key);
-			ruleObject.put("id", r.id);
-			ruleObject.put("name", r.name);
-			if(r.getClass() == RuleInt.class)
-				ruleObject.put("val", ((RuleInt) r).val);
-			else
-				ruleObject.put("val", ((RuleBool) r).val);
-			jRules.put(r.id, ruleObject);
-		}
-		
-		
-		state.getJSONArray(JSONConstants.type).put(JSONConstants.rules);
-		state.put(JSONConstants.rules, jRules);
-	}
+	
+	
+	
+	
 	
 	FactionManager fManager;
 	
-	void addJFactions(JSONObject state) throws JSONException{
-		JSONArray fMembers, factionNames = new JSONArray();
-		JSONObject jFaction, jRT, jFactions = new JSONObject();
-		JSONObject lookup = new JSONObject();
-		for(Faction f: fManager.factions){
-			jFaction = new JSONObject();
-			fMembers = new JSONArray();
-			
-			jFaction.put("name", f.name);
-			factionNames.put(f.name);
-			jFaction.put("color", f.color);
-			
-			for(RoleTemplate rt: f.members){
-				jRT = new JSONObject();
-				jRT.put("name", rt.getName());
-				jRT.put("description", rt.getDescription());
-				jRT.put("color", rt.getColor());
-				jRT.put("rules", new JSONArray(rt.getRules()));
-				jFactions.put(rt.getName() + rt.getColor(), jRT);
-				fMembers.put(jRT);
-			}
-				
-			jFaction.put("members", fMembers);
-			jFactions.put(f.name, jFaction);
-			jFactions.put(f.color, jFaction);
-		}
-		jFactions.put("lookup", lookup);
-		jFactions.put("factionNames", factionNames);
-		
-		state.getJSONArray(JSONConstants.type).put(JSONConstants.factions);
-		state.put(JSONConstants.factions, jFactions);
-	}
-	
 	void sendGameState(Player p) throws JSONException{
-		JSONObject state = GetGUIObject();
-		addJRolesList(state);
-		addJPlayerLists(state, p);
-		addJDayLabel(state);
-		addJGraveYard(state);
-		state.put(JSONConstants.gameStart, n.isStarted());
-		state.put(JSONConstants.showButton, !n.isInProgress() || p.isAlive() && (n.isNight() || p.hasDayAction()));
-		state.put(JSONConstants.endedNight, n.isNight() && p.endedNight());
+		StateObject iObject = getInstObject();
+		iObject.addState(StateObject.ROLESLIST);
+		iObject.addState(StateObject.PLAYERLISTS);
+		iObject.addState(StateObject.DAYLABEL);
+		iObject.addState(StateObject.GRAVEYARD);
+		
+		iObject.addKey(JSONConstants.gameStart, n.isStarted());
+		iObject.addKey(JSONConstants.showButton, !n.isInProgress() || p.isAlive() && (n.isNight() || p.hasDayAction()));
+		iObject.addKey(JSONConstants.endedNight, n.isNight() && p.endedNight());
 		
 		
 		if(n.isStarted()){
-			addJRoleInfo(p, state);
-			state.put(JSONConstants.isDay, n.isDay());
+			iObject.addState(StateObject.ROLEINFO);
+			iObject.addKey(JSONConstants.isDay, n.isDay());
 			if(n.isInProgress()){
-				state.put(JSONConstants.timer, getEndTime());
+				iObject.addKey(JSONConstants.timer, getEndTime());
 			}else{
-				state.put(JSONConstants.isFinished, true);
+				iObject.addKey(JSONConstants.isFinished, true);
 			}
 			if(n.isDay()){
-				state.put(JSONConstants.skipVote, p.getSkipper().getVoters().size());
-				state.put(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
+				iObject.addKey(JSONConstants.skipVote, p.getSkipper().getVoters().size());
+				iObject.addKey(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
 			}
 		}else{
-			state.put(JSONConstants.isHost, p == host);
-			state.put(JSONConstants.host, host.getName());
-			addJRules(state);
-			addJFactions(state);
+			iObject.addKey(JSONConstants.isHost, p == host);
+			iObject.addKey(JSONConstants.host, host.getName());
+			iObject.addState(StateObject.RULES);
 		}
-			
-		playerJWrite(p, state);
+		iObject.send(Player.list(p));
 	}
 	
 	void sendGameState(){
@@ -440,6 +220,88 @@ public class Instance implements NarratorListener{
 		}catch(JSONException e){
 			e.printStackTrace();
 		}
+	}
+	
+	private void deleteTeam(JSONObject jo) throws JSONException{
+		String color = jo.getString("color");
+		Team t = n.getTeam(color);
+		fManager.removeTeam(color);
+		n.removeTeam(t);
+		
+		getInstObject().addState(StateObject.RULES).send(n._players);
+	}
+	
+	private void addTeam(JSONObject jo) throws JSONException{
+		String name = jo.getString("teamName").replaceAll(" ", "");
+		for(Team t: n.getAllTeams()){
+			if(t.getName().equalsIgnoreCase(name)){
+				new OGIMessage(host, "That team name is taken!");
+				return;
+			}
+		}
+
+		String color = jo.getString("color");
+		if(n.getTeam(color.toUpperCase()) != null || color.toUpperCase().equals(Constants.A_RANDOM) || color.toUpperCase().equals(Constants.A_NEUTRAL)){
+			new OGIMessage(host, "That team color is already taken!");
+			return;
+		}
+		
+		
+		Team newTeam = n.addTeam(color);
+		newTeam.setName(name);
+		newTeam.setDescription("Custom team implemented by " + host.getName());
+		fManager.addFaction(newTeam);
+		
+		getInstObject().addState(StateObject.RULES).send(n._players);
+	}
+	private void addTeamRole(JSONObject jo) throws JSONException{
+		String color = jo.getString("color");
+		String simpleName = jo.getString("simpleName");
+		
+		Faction f = fManager.getFaction(color);
+		
+		f.makeAvailable(simpleName);
+		
+		getInstObject().addState(StateObject.RULES).send(n._players);
+	}
+	
+	private void removeTeamRole(JSONObject jo) throws JSONException{
+		String color = jo.getString("color");
+		String name = jo.getString("roleName");
+		
+		Faction f = fManager.getFaction(color);
+		
+		f.makeUnavailable(name);
+		
+		getInstObject().addState(StateObject.RULES).send(n._players);
+	}
+	
+	private void removeTeamAlly(JSONObject jo)throws JSONException{
+		String teamColor = jo.getString("color");
+		String allyColor = jo.getString("ally");
+		
+		Team team = n.getTeam(teamColor);
+		Team ally = n.getTeam(allyColor);
+		
+		team.setEnemies(ally);
+
+		getInstObject().addState(StateObject.RULES).send(n._players);
+	}
+	
+	private void removeTeamEnemy(JSONObject jo)throws JSONException{
+		String teamColor = jo.getString("color");
+		String enemyColor = jo.getString("enemy");
+		
+		Team team = n.getTeam(teamColor);
+		Team enemy = n.getTeam(enemyColor);
+		
+		team.setEnemies(enemy);
+
+		getInstObject().addState(StateObject.RULES).send(n._players);
+	}
+	
+	private StateObject getInstObject(){
+		return new StateObject(this);
 	}
 	
 	private PlayerList repickers = new PlayerList();
@@ -591,14 +453,57 @@ public class Instance implements NarratorListener{
     					r.setBool(id, val);
     				}
     			}
-    			
-    			JSONObject state = GetGUIObject();
-    			addJRules(state);
-    			for(Player pi: n.getAllPlayers().remove(host)){
-    				playerJWrite(pi, state);
+    			boolean valb;
+    			int vali;
+    			for(Team t: n.getAllTeams()){
+    				if(t.getColor().equals(Constants.A_SKIP))
+    					continue;
+    				
+    				inputJRule = jo.getJSONObject(t.getColor() + "kill");
+    				valb = inputJRule.getBoolean("val");
+    				t.setKill(valb);
+    				
+    				inputJRule = jo.getJSONObject(t.getColor() + "identity");
+    				valb = inputJRule.getBoolean("val");
+    				t.setKnowsTeam(valb);
+    				
+    				inputJRule = jo.getJSONObject(t.getColor() + "liveToWin");
+    				valb = inputJRule.getBoolean("val");
+    				t.setMustBeAliveToWin(valb);
+    				
+    				inputJRule = jo.getJSONObject(t.getColor() + "priority");
+    				vali = inputJRule.getInt("val");
+    				t.setPriority(vali);
     			}
+    			getInstObject().addState(StateObject.RULES).send(n.getAllPlayers().remove(host));
     			return;
     		}
+    		
+    		if(message.equals("addTeam")){
+    			addTeam(jo);
+    			return;
+    		}
+    		else if(message.equals("deleteTeam")){
+    			deleteTeam(jo);
+    			return;
+    		}
+    		else if(message.equals("addTeamRole")){
+    			addTeamRole(jo);
+    			return;
+    		}
+    		else if(message.equals("removeTeamRole")){
+    			removeTeamRole(jo);
+    			return;
+    		}
+    		else if(message.equals("removeTeamAlly")){
+    			removeTeamAlly(jo);
+    			return;
+    		}
+    		else if(message.equals("removeTeamEnemy")){
+    			removeTeamEnemy(jo);
+    			return;
+    		}
+    		
     		if(message.equals(JSONConstants.startGame)){
     			try{
     				startGame();
@@ -648,7 +553,6 @@ public class Instance implements NarratorListener{
 	}
 
 	protected void resetChat(Player p){
-		System.out.println("resetting chat");
 		StringBuilder sb = new StringBuilder();
 		for(Message e: p.getEvents()){
 			sb.append(e.access(p.getName(), true) + "\n");
@@ -727,11 +631,11 @@ public class Instance implements NarratorListener{
 	private void sendVotes(){
 		try{
 			for(Player p: n.getAllPlayers()){
-				JSONObject state = GetGUIObject();
-				addJPlayerLists(state, p);
-				state.put(JSONConstants.skipVote, p.getSkipper().getVoters().size());
-				state.put(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
-				playerJWrite(p, state);
+				StateObject io = getInstObject();
+				io.addState(StateObject.PLAYERLISTS);
+				io.addKey(JSONConstants.skipVote, p.getSkipper().getVoters().size());
+				io.addKey(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
+				io.send(Player.list(p));
 			}
 		}catch(JSONException e){}
 	}
@@ -752,18 +656,14 @@ public class Instance implements NarratorListener{
 
 	public void onNightTarget(Player owner, Player target) {
 		try {
-			JSONObject state = GetGUIObject();
-			addJPlayerLists(state, owner);
-			playerJWrite(owner, state);
+			getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
 		} catch (JSONException e) {}
 		
 	}
 
 	public void onNightTargetRemove(Player owner, Player prev) {
 		try {
-			JSONObject state = GetGUIObject();
-			addJPlayerLists(state, owner);
-			playerJWrite(owner, state);
+			getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
 		} catch (JSONException e) {}
 	}
 
@@ -781,11 +681,11 @@ public class Instance implements NarratorListener{
 
 	@Override
 	public void onMessageReceive(Player receiver, Message e) {
-		// TODO Auto-generated method stub
+		
 		
 	}
 
-	@Override
+	
 	public void onModKill(Player bad) {
 		resetChat();
 		
@@ -801,12 +701,7 @@ public class Instance implements NarratorListener{
 	}
 
 	public void onPlayerListStatusChange() throws JSONException {
-		JSONObject state;
-		for(Player p: n.getAllPlayers()){
-			state = GetGUIObject();
-			addJPlayerLists(state, p);
-			this.playerJWrite(p, state);
-		}
+		getInstObject().addState(StateObject.PLAYERLISTS).send(n.getAllPlayers());
 		
 	}
 

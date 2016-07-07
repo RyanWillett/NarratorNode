@@ -24,6 +24,9 @@ gameState.isOver = false;
 gameState.timer = -2;
 gameState.isAlive = true;
 
+gameState.editingAllies = false;
+gameState.editingRoles = false;
+
 var J = {};
 J.guiUpdate = 'guiUpdate';
 
@@ -122,11 +125,13 @@ function onRuleClickChange(e){
 	targ = e;
 	var value = e.checked;
 	var name = $("#roleDescriptionLabel").text();
-	var info = J.descriptions[name];
+	var color = $("#roleDescriptionLabel").css('color');
+	color = convertColor(color);
+	var member = gameState.factions[name+color];
 	var i = e.parentElement.id.substring(1);
 	i = parseInt(i);
-	var rule = info.rules[i];
-	gameState.rules[rule].val = value;
+	var ruleName = e.name;
+	gameState.rules[ruleName].val = value;
 
 	sendRules();
 }
@@ -134,13 +139,7 @@ function onRuleClickChange(e){
 function onRuleValueChange(e){
 	e = e.target;
 	var value = parseInt(e.value);
-	var name = $("#roleDescriptionLabel").text();
-	var color = $("#roleDescriptionLabel").css('color');
-	color = convertColor(color);
-	var member = gameState.factions[name+color];
-	var i = e.parentElement.id.substring(1);
-	i = parseInt(i);
-	var ruleName = member.rules[i];
+	var ruleName = e.name;
 	gameState.rules[ruleName].val = value;
 
 	sendRules();
@@ -170,36 +169,65 @@ function setRegularRules(){
 	});
 }
 
-J.MAX_RULES = 4;
-function setRules(obj){
-	var name = obj.name;
-	var color = obj.color;
-	setRegularRules();
-	$("#rules_pane").show();
-	var info = obj
-	if(info === undefined)
+J.MAX_RULES = 5;
+gameState.activeRule = null;
+
+function setActiveRule(newRule){
+	gameState.activeRule = newRule;
+}
+
+function clearRules(){
+	$('#roleDescriptionLabel').text("");
+	var element;
+	for (var i = 0; i < J.MAX_RULES; i++){
+		element = $('#r' + i);
+		element.hide();
+	}
+}
+
+function setRules(){
+	var rulePane = gameState.activeRule;
+	if(rulePane === null){
+		clearRules();
 		return;
+	}
+	var name = rulePane.name;
+	var color = rulePane.color;
+	$("#rules_pane").show();
+
 	var header = $('#roleDescriptionLabel');
+	var teamRule = rulePane.members !== undefined;
+	if(teamRule)
+		header.attr('name', rulePane.color);
+	else
+		header.attr('name', rulePane.name + rulePane.color);
 	header.text(name);
 	header.css('color', color);
-	$('#roleDescriptionText').html(info.description);
+
+	if(rulePane.description === undefined)
+		$('#roleDescriptionText').html("");
+	else	
+		$('#roleDescriptionText').html(rulePane.description.replace(new RegExp("\n", 'g'), "<br>"));
 
 	var rule, element, input, id, type, val, i;
-	if(info.rules === undefined)
+	if(rulePane.rules === undefined)
 		i = 0;
 	else{
-		for (i = 0; i < info.rules.length; i++){
-			id = info.rules[i];
+		for (i = 0; i < rulePane.rules.length; i++){
+			id = rulePane.rules[i];
 			rule = gameState.rules[id];
 			element = $('#r' + i);
-			val = rule.val;
-			if(Number(rule.val) === rule.val && rule.val % 1 === 0)
+
+			if(rule.isNum)
 				type = "number";
 			else
 				type = "checkbox";
+
 			element.html(rule.name + " <input class='numberInput' type=" + type + ">");
 			element.show();
+
 			input = $('#r' + i + " input");
+			input.attr('name', rule.id);
 			input.unbind();
 			if(type === 'checkbox'){
 				input.prop('checked', rule.val);
@@ -231,60 +259,108 @@ function convertColor(color){
 	return "#" + hex(color[0]) + hex(color[1]) + hex(color[2]);
 }
 
-function getMemberFromClick(e){
-	var name = e.innerHTML;
-	var color = convertColor(e.style.color);
-	return gameState.factions[name + color];
+function getMember(e){
+	var o = {};
+	o.name = e.innerHTML;
+	o.color = convertColor(e.style.color);
+	o.rule = gameState.factions[o.name + o.color];
+	o.simpleName = e.getAttribute("name");
+	return o;
 }
 
-function addRole(name, color){
+function addRole(memb){
 	var role_object = {};
 	role_object.message = J.addRole;
-	role_object.roleColor = color;
-	role_object.roleName = name;
+	role_object.roleColor = memb.color;
+	role_object.roleName = memb.name;
 	
 	if(gameState.isHost)
 		web_send(role_object);
 }
 
-function removeRole(name, color){
+function removeRole(member){
 	var role_object = {};
 	role_object.message = J.removeRole;
-	role_object.roleColor = color;
-	role_object.roleName = name;
+	role_object.roleColor = member.color;
+	role_object.roleName = member.name;
 	if(gameState.isHost)
 		web_send(role_object);
+	setActiveRule(null);
+	setRules();
 }
 
-function setCatalogue(cata){
-	if(cata === undefined)
+gameState.activeFaction = null;
+
+function setCatalogue(){
+	var aFaction = gameState.activeFaction;
+	if(aFaction === null)
 		return;
 	$("#rules_pane").hide();
+	$("#newTeamColor, #newTeamName, #newTeamSubmitButton").hide();
+	if(aFaction.isEditable)
+		$("#editAlliesButton, #editRolesButton, #deleteTeamButton").show();
+	else
+		$("#editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
 	var pane = $("#role_catalogue_clickable");
 	pane.empty();
 
-	var role_li;
-	for (var i = 0; i < cata.members.length; i++){
-		role_li = $('<li>'+cata.members[i].name+'</li>');
-		role_li[0].style.color = cata.members[i].color;
-		role_li.appendTo(pane);
+	var leftList;
+	if(gameState.editingAllies)
+		leftList = aFaction.allies;
+	else
+		leftList = aFaction.members;
+
+	var list_item;
+	for (var i = 0; i < leftList.length; i++){
+		list_item = $('<li>'+leftList[i].name+'</li>');
+		list_item[0].style.color = leftList[i].color;
+		list_item.appendTo(pane);
 		if(!gameState.started){
-			role_li.addClass("pregame_li");
+			list_item.addClass("pregame_li");
 		}
 	}
-	if(!gameState.started){
-		pane.unbind();
-		pane.on("click", "li", function (e){
-			var obj = getMemberFromClick(e.target);
-			setRules(obj);
-		});
-		pane.on("dblclick", "li", function(e){
-			var memb = getMemberFromClick(e.target);
-			
-			setRules(memb);
-			addRole(memb.name, memb.color);
-		});
+	
+	if(aFaction.isEditable){
+		setActiveRule(aFaction);
+		setRules();
 	}
+
+
+	pane.unbind();
+	pane.on("click", "li", function (e){
+		if(gameState.editingRoles){
+
+		}else if(gameState.editingAllies){
+
+		}else{
+			var obj = getMember(e.target);
+			$("#editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
+			$(".addTeamTrio").hide();
+			setActiveRule(obj.rule);
+			setRules();
+		}
+	});
+	pane.on("dblclick", "li", function(e){
+		var memb = getMember(e.target);
+		$("#editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
+		$(".addTeamTrio").hide();
+		if(gameState.editingRoles){
+			var o = {};
+			o.roleName = memb.name;
+			o.message = "removeTeamRole";
+			o.color = gameState.activeFaction.color;
+			web_send(o);
+		}else if(gameState.editingAllies){
+			var o = {};
+			o.message = "removeTeamAlly";
+			o.color = gameState.activeFaction.color;
+			o.ally = memb.color;
+			web_send(o);
+		}else{
+			addRole(memb);
+		}
+	});
+	
 }
 
 function hex(num){
@@ -295,7 +371,7 @@ function hex(num){
 	return num;
 }
 
-function setRolesList(rolesList_o){
+function setRolesList(rolesList_o, func){
 	var rolesList;
 	if(gameState.started)
 		rolesList = $("#rolesList");
@@ -307,23 +383,29 @@ function setRolesList(rolesList_o){
 	for (var i = 0; i < rolesList_o.length; i++){
 		role_li = $('<li>'+rolesList_o[i].roleType+'</li>');
 		role_li[0].style.color = rolesList_o[i].color;
+		role_li.attr('name', rolesList_o[i].simpleName);
 		role_li.appendTo(rolesList);
 		if(!gameState.started){
 			role_li.addClass("pregame_li");
 		}
 	}
 	if(!gameState.started){
-		$('#ingameRolesPane span').text("Roles List (" + rolesList_o.length + ")");
+		if(func === removeRole)
+			$('#ingameRolesPane span').text("Roles List (" + rolesList_o.length + ")");
 		if(gameState.isHost){
 			rolesList.unbind();
 			rolesList.on("dblclick", ".pregame_li", function(e){
-				var memb = getMemberFromClick(e.target);
-				setRules(memb);
-				removeRole(memb.name, memb.color);
+				var memb = getMember(e.target);
+				func(memb);
 			});
 			rolesList.on("click", ".pregame_li", function(e){
-				var memb = getMemberFromClick(e.target);
-				setRules(memb);
+				if(!gameState.editingAllies && !gameState.editingRoles){
+					var memb = getMember(e.target);
+					setActiveRule(memb.rule);
+					setRules();
+				}else{
+					//setActiveRule(null);
+				}
 			});
 		}
 	}
@@ -554,7 +636,71 @@ function showButton(bool){
 		button.hide();
 }
 
+function addAvailableRole(e){
+	var o = {};
+	o.message = "addTeamRole";
+	o.color = gameState.activeFaction.color;
+	o.roleName = e.name;
+	o.simpleName = e.simpleName;
+	web_send(o);
+}
+
+function removeEnemy(e){
+	var o = {};
+	o.message = "removeEnemy";
+	o.color = gameState.activeFaction.color;
+	o.enemy = e.color;
+	web_send(o);
+}
+
+function displayTeamEditRoles(){
+	if(gameState.activeFaction === null)
+		return;
+	var color = convertColor($("#roleDescriptionLabel").css('color'));
+	var unAvailHeader = $("#availableRolesHeader");
+	unAvailHeader.text("Available Roles");
+	var availHeader = $("#inGameRolesHeader");
+	availHeader.text("Blacklisted Roles");
+
+	var faction = gameState.activeFaction;
+	var blacklisted = [];
+	var o;
+	for(var i = 0; i < faction.blacklisted.length; i++){
+		o = {}
+		o.roleType = faction.blacklisted[i].name;
+		o.color = faction.color;
+		o.simpleName = faction.blacklisted[i].simpleName;
+		blacklisted.push(o);
+	}
+	setRolesList(blacklisted, addAvailableRole);
+	setCatalogue();
+}
+
+function displayTeamEditAllies(){
+	if(gameState.activeFaction === null)
+		return;
+	var color = convertColor($("#roleDescriptionLabel").css('color'));
+	var unAvailHeader = $("#availableRolesHeader");
+	unAvailHeader.text("Allies");
+	var availHeader = $("#inGameRolesHeader");
+	availHeader.text("Enemies");
+
+	var faction = gameState.activeFaction;
+	var enemies = [];
+	var o;
+	for(var i = 0; i < faction.enemies.length; i++){
+		o = {}
+		o.roleType = faction.enemies[i].name;
+		o.color = faction.enemies[i].color;
+		o.simpleName = o.color;
+		enemies.push(o);
+	}
+	setRolesList(enemies, removeEnemy);
+	setCatalogue();
+}
+
 function setFactions(){
+	console.log("factions!");
 	var factionList = $("#team_catalogue_pane");
 	factionList.empty();
 	var factionItem, f, name;
@@ -565,6 +711,59 @@ function setFactions(){
 		factionItem = $('<li><span style="color: ' + f.color + ';">' + f.name + '</span></li>');
 		factionList.append(factionItem);
 	}
+	$("#newTeamColor, #newTeamName, #newTeamSubmitButton, #editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
+	$("#newTeamColor #newTeamName").val("");
+	if(gameState.isHost){
+		$("#newTeamButton").show();
+	}else{
+		$("#newTeamButton").hide();
+	}
+
+	
+	$("#rules_pane").hide();
+
+	$("#deleteTeamButton").unbind();
+	$("#deleteTeamButton").click(function(){
+		setMode(false, false);
+		if(gameState.editingRoles){
+			$("#availableRolesHeader").text("Available Roles");
+			setMode(false, false);
+			setCatalogue();
+			setRolesList(gameState.rolesList, removeRole);
+			$("#deleteTeamButton").text("Delete Team");
+		}else if(gameState.editingAllies){
+			$("#availableRolesHeader").text("Available Roles");
+			setCatalogue();
+			setRolesList(gameState.rolesList, removeRole);
+			$("#deleteTeamButton").text("Delete Team");
+		}else{
+			setActiveRule(null);
+			var o = {message:"deleteTeam"};
+			o.color = convertColor($("#roleDescriptionLabel").css('color'));
+			web_send(o);
+		}
+	});
+
+	$("#editRolesButton").unbind();
+	$("#editRolesButton").click(function(){
+		$("#deleteTeamButton").text("Save Changes");
+		gameState.editingRoles = true;
+		gameState.editingAllies = false;
+		displayTeamEditRoles();
+	});
+
+	$("#editAlliesButton").unbind();
+	$("#editAlliesButton").click(function(){
+		$("#deleteTeamButton").text("Save Changes");
+		gameState.editingRoles = false;
+		gameState.editingAllies = true;
+		displayTeamEditAllies();
+	});
+
+	if(gameState.editingRoles)
+		displayTeamEditRoles();
+	if(gameState.editingAllies)
+		displayTeamEditAllies();
 }
 
 function setRoleInfo(roleInfo){
@@ -591,10 +790,12 @@ function setHost(bool){
 		startButton = $("#setupButtonB");
 		leaveButton = $("#setupButtonA");
 		startButton.show();
+		$("#newTeamButton").show()
 	}
 	else{
 		leaveButton = $("#setupButtonB");
 		startButton = $("#setupButtonA");
+		$("#newTeamButton").hide();
 		startButton.hide();
 	}
 	startButton.unbind();
@@ -666,10 +867,23 @@ function handleObject(object){
 		}
 		if(object[J.endedNight] !== undefined)
 			gameState.endedNight = object[J.endedNight];
-		if(object.factions !== undefined){
+		
+		if(hasType(J.rules, object.type)){
+			gameState.rules = object.rules;
 			gameState.factions = object.factions;
-			setFactions();
+			if(gameState.activeRule !== null){
+				if(gameState.factions.factionNames.indexOf(gameState.activeRule.name) === -1 && gameState.activeRule.members !== undefined){
+					setActiveRule(null);
+				}else{
+					var activeFactionColor = gameState.activeFaction.color;
+					gameState.activeFaction = gameState.factions[activeFactionColor];
+				}
+			}
+			setFactions(); //has to be after the new faction is being set
+			setRules();
+			setRegularRules();
 		}
+
 		if(object[J.isHost] !== undefined)
 			setHost(object[J.isHost]);
 
@@ -692,19 +906,17 @@ function handleObject(object){
 			setLivePlayers(object.playerLists);
 		}
 
-		if(hasType(J.roles, object.type))
-			setRolesList(object.roles);
+		if(hasType(J.roles, object.type)){
+			gameState.rolesList = object.roles;
+			setRolesList(gameState.rolesList, removeRole);
+		}
 
 		if(hasType(J.dayLabel, object.type))
 			setDayLabel(object.dayLabel);
 		if(object[J.timer] !== undefined)
 			gameState.timer = object[J.timer];
 		
-		if(hasType(J.rules, object.type)){
-			gameState.rules = object.rules;
-			var ele = $('#roleDescriptionLabel');
-			setRules(ele.text());
-		}
+		
 		if(object.ping !== undefined){
 			$("#ping")[0].play();
 		}
@@ -898,13 +1110,32 @@ function signup(){
 	});
 }
 
+function isHex(h){
+	var a = parseInt(h,16);
+	a = a.toString(16).toLowerCase();
+	while(a.length < 6)
+		a = "0" + a;
+	return (a === h.toLowerCase())
+}
+
+function setMode(eAllies, eRoles){
+	gameState.editingAllies = eAllies;
+	gameState.editingRoles = eRoles;
+}
+
 $(document).ready(function(){
 	$("#logoutButton")[0].onclick = logout;
 	$("#login_button")[0].onclick = login;
 	$("#signup_button")[0].onclick = signup;
 	$("#team_catalogue_pane").on("click", "li", function(e){
 		var catalog = gameState.factions[e.target.innerHTML];
-		setCatalogue(catalog);
+		if(gameState.activeFaction !== catalog && catalog !== undefined){
+			setMode(false, false);
+			gameState.activeFaction = catalog;
+			setActiveRule(null);
+			setRules();
+			setCatalogue(); 
+		}
 	});
 	$(".lobby_buttons").unbind();
 	$("#joinButton").click(function(){
@@ -918,5 +1149,62 @@ $(document).ready(function(){
 		o.action = true;
 		o.message = "hostPublic";
 		web_send(o);
+	});
+	$("#newTeamSubmitButton").unbind();
+	$("#newTeamSubmitButton").click(function(){
+		var newColor = $("#newTeamColor");
+		var newTeam = $("#newTeamName");
+		var submit = $("#newTeamSubmitButton");
+		
+
+		
+		var color = newColor.val();
+		var team = newTeam.val();
+		if(color.length === 0 || team.length === 0)
+			return;
+		if(color[0] !== "#"){
+			color = "#" + color;
+		}
+		if(color.length !== 7 && color.length != 4){
+			addToChat("RGB codes are typically 6 characters long.");
+			return;
+		}
+		if(color.length === 4){
+			color = color[0] + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
+		}
+		if(!isHex(color.substring(1))){
+			addToChat("This isn't in RGB format.");
+			return;
+		}
+		var o = {};
+		o.message = "addTeam";
+		o.color = color.toUpperCase();
+		o.teamName = team;
+		web_send(o);
+	});
+	$("#newTeamButton").click(function(){
+		$(".editTeamTrio").hide();
+		setActiveRule(null);
+		setRules();
+
+		var newColor = $("#newTeamColor");
+		var newTeam = $("#newTeamName");
+		$("#rules_pane p").text("");
+		$("#roleDescriptionLabel").text("New Team Name");
+		$("#roleDescriptionLabel").show();
+		$("#rules_pane").show();
+		$("#newTeamSubmitButton").show();
+		newColor.show();
+		newTeam.show();
+
+		newTeam.unbind();
+		newTeam.bind('keyup input', function(e){
+			$("#roleDescriptionLabel").text(newTeam.val());
+		});
+		newColor.unbind();
+		newColor.bind('keyup input', function(e){
+			$("#roleDescriptionLabel").css('color', newColor.val());
+		});
+		$("#")
 	});
 });
