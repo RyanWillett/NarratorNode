@@ -206,6 +206,8 @@ public class NodeSwitch implements TextInput{
 		}
     	switch(jo.getString("message")){
     	case "greeting":
+    		if(np.isActive())
+    			return;
 			np.setActive();
     		if(np.isInLobby()){
         		joinLobby(np);

@@ -5,6 +5,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 
@@ -15,6 +16,7 @@ import json.JSONException;
 import json.JSONObject;
 import shared.event.Message;
 import shared.event.OGIMessage;
+import shared.logic.Member;
 import shared.logic.Narrator;
 import shared.logic.Player;
 import shared.logic.PlayerList;
@@ -260,9 +262,37 @@ public class Instance implements NarratorListener{
 		
 		Faction f = fManager.getFaction(color);
 		
-		f.makeAvailable(simpleName);
+		Member newMember = f.makeAvailable(simpleName);
 		
-		getInstObject().addState(StateObject.RULES).send(n._players);
+		StateObject s = getInstObject();
+		
+		if(f.members.size() == 2){
+			Faction randFac = fManager.getFaction(Constants.A_RANDOM);
+			ArrayList<RoleTemplate> list = new ArrayList<>();
+			
+			RandomRole r = new RandomRole(f.getName() + " Random", f.getColor());
+			for(RoleTemplate m: f.members){
+				if(!m.isRandom()){
+					r.addMember((Member) m);
+				}
+			}
+			list.add(r);
+			
+			randFac.add(list);
+		}else if(f.members.size() > 2){
+			Faction randFac = fManager.getFaction(Constants.A_RANDOM);
+			for(RoleTemplate rt: randFac.members){
+				if(rt.isRandom()){
+					RandomRole rr = (RandomRole) rt;
+					if(rr.getName().equals(f.getName() + " Random")){
+						rr.addMember(newMember);
+						break;
+					}
+				}
+			}
+		}
+		
+		s.addState(StateObject.RULES).send(n._players);
 	}
 	
 	private void removeTeamRole(JSONObject jo) throws JSONException{
@@ -271,9 +301,16 @@ public class Instance implements NarratorListener{
 		
 		Faction f = fManager.getFaction(color);
 		
-		f.makeUnavailable(name);
+		Member m = f.makeUnavailable(name);
 		
-		getInstObject().addState(StateObject.RULES).send(n._players);
+		StateObject s = getInstObject().addState(StateObject.RULES);
+		if(n.getAllRoles().contains(m)){
+			n.getAllRoles().remove(m);
+			s.addState(StateObject.ROLESLIST);
+		}
+		
+		s.send(n._players);
+		
 	}
 	
 	private void removeTeamAlly(JSONObject jo)throws JSONException{

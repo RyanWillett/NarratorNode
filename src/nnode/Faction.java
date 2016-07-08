@@ -84,13 +84,14 @@ public class Faction {
 	}
 	
 	//class name, not given name
-	public void makeAvailable(String className){
+	public Member makeAvailable(String className){
 		Member toMakeAvailable = removeFromAvailable(className);
 		if(toMakeAvailable == null)
-			return;
+			return null;
 		if(team != null)
 			toMakeAvailable.setColor(team.getColor());
 		members.add(toMakeAvailable);
+		return toMakeAvailable;
 	}
 	
 	public Faction(Team team, RandomRole toAdd) {
@@ -163,7 +164,7 @@ public class Faction {
 	}
 
 	public boolean isEditable = true;
-	public void makeUnavailable(String roleName) {
+	public Member makeUnavailable(String roleName) {
 		Member newUnavailable = null;
 		for(RoleTemplate rt: members){
 			if(rt.isRandom())
@@ -175,11 +176,12 @@ public class Faction {
 			}
 		}
 		if(newUnavailable == null)
-			return;
+			return null;
 		unavailableRoles.add(newUnavailable);
 		members.remove(newUnavailable);
 
 		Collections.sort(unavailableRoles);
+		return newUnavailable;
 	}
 
 	public Team getTeam() {

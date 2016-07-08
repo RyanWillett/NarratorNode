@@ -187,6 +187,7 @@ function clearRules(){
 
 function setRules(){
 	var rulePane = gameState.activeRule;
+	console.log("setrules triggered");
 	if(rulePane === null){
 		clearRules();
 		return;
@@ -266,6 +267,7 @@ function getMember(e){
 	o.name = e.innerHTML;
 	o.color = convertColor(e.style.color);
 	o.rule = gameState.factions[o.name + o.color];
+
 	o.simpleName = e.getAttribute("name");
 	return o;
 }
@@ -298,7 +300,7 @@ function setCatalogue(){
 	if(aFaction === null)
 		return;
 	$("#newTeamColor, #newTeamName, #newTeamSubmitButton").hide();
-	if(aFaction.isEditable)
+	if(aFaction.isEditable && gameState.isHost)
 		$("#editAlliesButton, #editRolesButton, #deleteTeamButton").show();
 	else
 		$("#editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
@@ -871,9 +873,15 @@ function handleObject(object){
 					setActiveRule(null);
 				}else{
 					var activeFactionColor = gameState.activeFaction.color;
-					gameState.activeFaction = gameState.factions[activeFactionColor];
+					var newFaction = gameState.factions[activeFactionColor];
+					if(gameState.activeFaction == gameState.activeRule)
+						setActiveRule(newFaction);
+					gameState.activeFaction = newFaction;
+					var header = $("#roleDescriptionLabel");
+
 				}
 			}
+			setCatalogue();
 			setFactions(); //has to be after the new faction is being set
 			setRules();
 			setRegularRules();
@@ -903,7 +911,8 @@ function handleObject(object){
 
 		if(hasType(J.roles, object.type)){
 			gameState.rolesList = object.roles;
-			setRolesList(gameState.rolesList, removeRole);
+			if(!gameState.editingAllies && !gameState.editingRoles)
+				setRolesList(gameState.rolesList, removeRole);
 		}
 
 		if(hasType(J.dayLabel, object.type))
@@ -1131,6 +1140,8 @@ $(document).ready(function(){
 		if(gameState.activeFaction !== catalog && catalog !== undefined){
 			setMode(false, false);
 			gameState.activeFaction = catalog;
+			$("#availableRolesHeader").text("Available Roles");
+			setRolesList(gameState.rolesList, removeRole);
 			setActiveRule(gameState.activeFaction);
 			setRules();
 			setCatalogue(); 
