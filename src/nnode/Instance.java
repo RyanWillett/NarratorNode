@@ -638,9 +638,14 @@ public class Instance implements NarratorListener{
 				playerInfo.put("name", p.getName());
 				playerInfo.put("color", p.getTeam(day));
 				playerInfo.put("role", p.getRole(day).getClass().getSimpleName());
+				playerInfoArray.put(playerInfo);
 			}
 			jo.put("playerInfo", playerInfoArray);
-			jo.put("commands", new JSONArray(n.getCommands()));
+			JSONArray commands = new JSONArray();
+			for(String s: n.getCommands()){
+				commands.put(s + "\n");
+			}
+			jo.put("commands", commands);
 			in.write(jo.toString());
 			in.close();
 		} catch (IOException | JSONException | NullPointerException e) {

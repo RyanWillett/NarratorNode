@@ -107,6 +107,8 @@ public class NodeSwitch implements TextInput{
         	}catch(JSONException e){
         		System.err.println("[ " + message + " ] was invalid");
         		e.printStackTrace();
+        	}catch(NullPointerException f){
+        		f.printStackTrace();
         	}catch(Throwable t){
         		t.printStackTrace();
         		break;

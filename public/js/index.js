@@ -100,8 +100,13 @@ function addToChat(message){
 
 var socket = null;
 function web_send(o){
+	if(user.displayName === undefined || user.displayName === null)
+		return;
 	o.name  = user.displayName;
-	socket.send(JSON.stringify(o));
+	if(socket === null)
+		connect();
+	else
+		socket.send(JSON.stringify(o));
 }
 $('form').submit(function(event){
 	if (socket !== null)
@@ -332,6 +337,7 @@ function setCatalogue(){
 
 		}else{
 			var obj = getMember(e.target);
+			console.log(obj);
 			$("#editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
 			$(".addTeamTrio").hide();
 			setActiveRule(obj.rule);
@@ -708,12 +714,11 @@ function setFactions(){
 		factionItem = $('<li><span style="color: ' + f.color + ';">' + f.name + '</span></li>');
 		factionList.append(factionItem);
 	}
-	$("#newTeamColor, #newTeamName, #newTeamSubmitButton, #editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
-	$("#newTeamColor #newTeamName").val("");
+
 	if(gameState.isHost){
 		$("#newTeamButton").show();
 	}else{
-		$("#newTeamButton").hide();
+		$("#newTeamButton, #deleteTeamButton").hide();
 	}
 
 	
@@ -866,16 +871,18 @@ function handleObject(object){
 			gameState.endedNight = object[J.endedNight];
 		
 		if(hasType(J.rules, object.type)){
+			if(gameState.factions !== undefined && gameState.factions.factionNames.length !== object.factions.factionNames.length)
+				$("#newTeamColor #newTeamName").val("");
 			gameState.rules = object.rules;
 			gameState.factions = object.factions;
-			if(gameState.activeRule !== null){
+			if(gameState.activeRule !== null && gamestate.activeRule !== undefined){
 				if(gameState.factions.factionNames.indexOf(gameState.activeRule.name) === -1 && gameState.activeRule.members !== undefined){
 					setActiveRule(null);
 				}else{
 					var activeFactionColor = gameState.activeFaction.color;
 					var newFaction = gameState.factions[activeFactionColor];
-					if(gameState.activeFaction == gameState.activeRule)
-						setActiveRule(newFaction);
+					if(gameState.activeRule !== null)
+						setActiveRule(gameState.factions[gameState.activeRule.name + gameState.activeRule.color]);
 					gameState.activeFaction = newFaction;
 					var header = $("#roleDescriptionLabel");
 
@@ -965,83 +972,92 @@ function greetServer(){
 	setTimer();
 }
 
+function setSubmitFunction(){
+	$('form').submit(function(e){
+		e = e.target.childNodes[0];
+		if(e.id === 'host_name_input')
+			return host_submit();
+
+		var team, m, message;
+		if($("#lobby_page").is(":visible")){
+			m = $("#m_lobby");
+			message = m.val();
+		}else{
+			if(gameState.started){
+				team = gameState.role.roleColor;
+				m = $('#m');
+			}else{
+				team = "null";
+				m = $('#m_setup');
+			}
+			message = 'say ' + team + ' ' + m.val();
+		}
+		
+		if(m.val().length === 0)
+			return false;
+
+		var o = {}
+		o.action = false;
+		o.message = message;
+		web_send(o);
+
+		m.val('');
+		return false;
+	});
+}
+
+function connect(){
+	var host = location.origin.replace(/^http/, 'ws');
+	if(!host.endsWith(":3000"))
+		host = host + ":3000";
+	var ws = new WebSocket(host);
+
+	setSubmitFunction();
+
+	ws.onmessage = (function(msg){
+		handleObject(JSON.parse(msg.data));
+		if(user.displayName === "Voss")
+			$("#newChatMessageAudio")[0].play();
+	});
+
+	ws.onopen = (function(){
+		console.log('websocket client opened');
+		socket = ws;
+		greetServer();
+	});
+	ws.onclose = (function(){
+		$('#messages').append($('<li>').text("Connection with server terminated"));
+		socket = null;
+	});
+
+	var button = $("#theButton");
+	button.on("click", function(){
+		if(gameState.isOver){
+			location.reload();
+		}else if(gameState.isDay){
+			if(gameState.role.roleName === 'Mayor'){
+				web_send({message: 'Reveal'});
+			}else{
+				web_send({message: 'Burn'});
+			}
+		}else{
+			web_send({message: 'end night'});
+			gameState.endedNight = !gameState.endedNight;
+			if(gameState.endedNight){
+				button.text('Cancel End Night');
+			}else
+				button.text('End Night');
+			$('.radios').prop('disabled', gameState.endedNight || gameState.isDay);
+		}
+
+
+	});
+}
+
 firebase.auth().onAuthStateChanged(function(user_o){
 	if(user_o && user === null){//to ensure that we're not initiating a websocket a million times
 		user = user_o;
-		$("#roleCardHeader").html(user.displayName);
-		var host = location.origin.replace(/^http/, 'ws');
-		var ws = new WebSocket(host);
-
-		$('form').submit(function(e){
-			e = e.target.childNodes[0];
-			if(e.id === 'host_name_input')
-				return host_submit();
-
-			var team, m, message;
-			if($("#lobby_page").is(":visible")){
-				m = $("#m_lobby");
-				message = m.val();
-			}else{
-				if(gameState.started){
-					team = gameState.role.roleColor;
-					m = $('#m');
-				}else{
-					team = "null";
-					m = $('#m_setup');
-				}
-				message = 'say ' + team + ' ' + m.val();
-			}
-			
-			if(m.val().length === 0)
-				return false;
-
-			var o = {}
-			o.action = false;
-			o.message = message;
-			web_send(o);
-
-			m.val('');
-			return false;
-		});
-
-		ws.onmessage = (function(msg){
-			handleObject(JSON.parse(msg.data));
-			if(user.displayName === "Voss")
-				$("#newChatMessageAudio")[0].play();
-		});
-
-		ws.onopen = (function(){
-			console.log('websocket client opened');
-			socket = ws;
-			greetServer();
-		});
-		ws.onclose = (function(){
-			$('#messages').append($('<li>').text("Connection with server terminated"));
-			socket = null;
-		});
-
-		var button = $("#theButton");
-		button.on("click", function(){
-			if(gameState.isOver){
-				location.reload();
-			}else if(gameState.isDay){
-				if(gameState.role.roleName === 'Mayor'){
-					web_send({message: 'Reveal'});
-				}else{
-					web_send({message: 'Burn'});
-				}
-			}else{
-				web_send({message: 'end night'});
-				gameState.endedNight = !gameState.endedNight;
-				if(gameState.endedNight){
-					button.text('Cancel End Night');
-				}else
-					button.text('End Night');
-				$('.radios').prop('disabled', gameState.endedNight || gameState.isDay);
-			}
-
-
-		});
+		connect();
 		
 
 	}else if (user_o === null){

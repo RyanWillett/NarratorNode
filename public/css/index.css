@@ -150,10 +150,9 @@ nav {
 }
 #messages{
 	position: fixed;
-	top: 280px;
 	bottom: 50px;
+	top: 280px;
 	overflow-y: auto;
-	padding-bottom: 45px;
 	width: 80%;
 }
 form{
@@ -408,8 +407,13 @@ h2{
 }
 
 #lobby_messages{
+	position: fixed;
+	top: 0;
+	left: 0;
+	bottom: 50px;
 	width: 80%;
 	max-width: 80%;
+	overflow-y: auto;
 }
 .lobby_player_header{
 	text-align: center;

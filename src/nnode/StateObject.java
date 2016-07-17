@@ -318,26 +318,31 @@ public class StateObject {
 				playerLists.put("Vote", names);
 				playerLists.getJSONArray(JSONConstants.type).put("Vote");
 			}else{
-				String[] abilities = p.getAbilities();
-				for(String s_ability: abilities){
-					int ability = p.parseAbility(s_ability);
-					PlayerList acceptableTargets = new PlayerList();
-					for(Player potentialTarget: n.getAllPlayers()){
-						if(p.isAcceptableTarget(potentialTarget, ability)){
-							acceptableTargets.add(potentialTarget);
+				if(n.isInProgress()){
+					String[] abilities = p.getAbilities();
+					for(String s_ability: abilities){
+						int ability = p.parseAbility(s_ability);
+						PlayerList acceptableTargets = new PlayerList();
+						for(Player potentialTarget: n.getAllPlayers()){
+							if(p.isAcceptableTarget(potentialTarget, ability)){
+								acceptableTargets.add(potentialTarget);
+							}
 						}
+						if(acceptableTargets.isEmpty())
+							continue;
+	
+						JSONArray names = getJPlayerArray(acceptableTargets, p.getTargets(ability));
+						playerLists.put(s_ability, names);
+						playerLists.getJSONArray(JSONConstants.type).put(s_ability);
 					}
-					if(acceptableTargets.isEmpty())
-						continue;
-
-					JSONArray names = getJPlayerArray(acceptableTargets, p.getTargets(ability));
-					playerLists.put(s_ability, names);
-					playerLists.getJSONArray(JSONConstants.type).put(s_ability);
-				}
-				if(playerLists.getJSONArray(JSONConstants.type).length() == 0){
-					JSONArray names = getJPlayerArray(new PlayerList());
-					playerLists.put("You have no acceptable night actions tonight!", names);
-					playerLists.getJSONArray(JSONConstants.type).put("You have no acceptable night actions tonight!");
+					if(playerLists.getJSONArray(JSONConstants.type).length() == 0){
+						JSONArray names = getJPlayerArray(new PlayerList());
+						playerLists.put("You have no acceptable night actions tonight!", names);
+						playerLists.getJSONArray(JSONConstants.type).put("You have no acceptable night actions tonight!");
+					}
+				}else{
+					playerLists.put("Game Over", getJPlayerArray(n.getAllPlayers(), new PlayerList()));
+					playerLists.getJSONArray(JSONConstants.type).put("Game Over");
 				}
 			}
 		}else{

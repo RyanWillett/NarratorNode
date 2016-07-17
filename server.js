@@ -107,7 +107,7 @@ function web_send(name, message){
     console.log('sending web message to ' + name + " : " + message);
   var c = connections_mapping[name];
   //console.log(connections_mapping.length);
-  if (c!== undefined)
+  if (c!== undefined && c !== null)
     c.send(message);
   //console.log('finished sending to ' + name);
 }
@@ -146,7 +146,8 @@ wss.on("connection", function(ws) {
     try{
       o = JSON.parse(message);
 
-      
+      if(o.name === null || o.name === undefined)
+        return;
       if (!(o.name in connections_mapping)){
         //o.message = 'greeting';  message should already be greeting
         pipe_write(message);
@@ -161,10 +162,13 @@ wss.on("connection", function(ws) {
       if(o.message.length !== 0){
         pipe_write(message);
       }
-    }catch(f){
-      console.log("message that caused error : " + message);
-      console.log(f);
+    }catch(myErrorMessage){
+      console.log(myErrorMessage);
     }
+  });
+
+  ws.on('error', function(err){
+    console.log(err);
   });
 
   ws.on("close", function() {
