@@ -192,7 +192,6 @@ function clearRules(){
 
 function setRules(){
 	var rulePane = gameState.activeRule;
-	console.log("setrules triggered");
 	if(rulePane === null){
 		clearRules();
 		return;
