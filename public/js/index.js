@@ -103,6 +103,7 @@ function web_send(o){
 	if(user.displayName === undefined || user.displayName === null)
 		return;
 	o.name  = user.displayName;
+	o.slack = false;	
 	if(socket === null)
 		connect();
 	else
@@ -930,10 +931,6 @@ function handleObject(object){
 		if(object.ping !== undefined){
 			$("#ping")[0].play();
 		}
-
-
-
-		
 	}else{	
 		if(object.chatReset){
 
