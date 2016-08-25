@@ -4,3 +4,4 @@ src/*.txt
 *.class
 src/nnode/test.java
 node_modules/*
+node_modules/*.*
