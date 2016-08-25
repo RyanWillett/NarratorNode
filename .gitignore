@@ -2,5 +2,6 @@ src/android/*
 src/shared/*
 src/*.txt
 *.class
+keys.js
 src/nnode/test.java
 node_modules/
