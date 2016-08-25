@@ -651,7 +651,7 @@ function addAvailableRole(e){
 
 function removeEnemy(e){
 	var o = {};
-	o.message = "removeEnemy";
+	o.message = "removeTeamEnemy";
 	o.color = gameState.activeFaction.color;
 	o.enemy = e.color;
 	web_send(o);
@@ -875,14 +875,15 @@ function handleObject(object){
 				$("#newTeamColor #newTeamName").val("");
 			gameState.rules = object.rules;
 			gameState.factions = object.factions;
-			if(gameState.activeRule !== null && gamestate.activeRule !== undefined){
+			if(gameState.activeRule !== null && gameState.activeRule !== undefined){
 				if(gameState.factions.factionNames.indexOf(gameState.activeRule.name) === -1 && gameState.activeRule.members !== undefined){
 					setActiveRule(null);
 				}else{
 					var activeFactionColor = gameState.activeFaction.color;
 					var newFaction = gameState.factions[activeFactionColor];
-					if(gameState.activeRule !== null)
-						setActiveRule(gameState.factions[gameState.activeRule.name + gameState.activeRule.color]);
+					if(gameState.activeRule !== null){
+						setActiveRule(gameState.factions[gameState.activeRule.name]);
+					}
 					gameState.activeFaction = newFaction;
 					var header = $("#roleDescriptionLabel");
 
