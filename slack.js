@@ -1,4 +1,13 @@
-var apiToken = "xoxb-64623018487-UE5zryjpBgLwFXFtJznvcJYC";
+
+//helpful link : https://github.com/xBytez/slackbotapi/blob/master/lib/index.js
+
+var apiToken = require('./keys').myToken;
+//var apiToken = require('./keys').pepbandToken;
+//var apiToken = require('./keys').sdscToken;
+
+var MAFIA_CHANNEL_NAME = 'narrator_mafia';
+var STARTERS = ['c1mckay', 'michaelcmkay', 'euromkay']
+
 const READ_JAVA_OUTPUT = true;
 const LOG_CLIENT_OUTPUT = false;
 
@@ -7,7 +16,7 @@ var exec = require('child_process').exec;
 
 var slackbot = new slackAPI({
     'token': apiToken,
-    'logging': true,
+    'logging': false,
     'autoReconnect': true
 });
 
@@ -19,11 +28,6 @@ function compile_file(files, i, final_func){
   }
 
   comp_name = files[i];
-  /*if (classExists(comp_name)){
-    console.log('already compiled: ' + comp_name);
-    compile_file(files, i + 1, final_func);
-    return;
-  }*/
   console.log('compiling ' + comp_name);
   var command = "javac  -sourcepath src "; 
   //if (process.env.PORT === undefined) 
@@ -36,6 +40,9 @@ function compile_file(files, i, final_func){
     compile_file(files, i + 1, final_func);
   });
 }
+
+var pipe = null;
+var junk = "";
 
 function connectClient(){
   var net = require('net');
@@ -58,7 +65,7 @@ function runJava(){
   console.log('running java prog');
   setTimeout(connectClient, 3000);
   var spawn = require('child_process').spawn
-  java = spawn("java", ["nnode/NodeSwitch"], {cwd: 'src'});
+  java = spawn("java", ["nnode/SlackSwitch"], {cwd: 'src'});
   java.stdout.on('data', function(data){
     //console.log('(java) : ' + data);
     if(READ_JAVA_OUTPUT)
@@ -73,51 +80,143 @@ function runJava(){
 }
 
 
+function receiver(data) {
+  data = data.toString();
+  data = data.replace('\r', '');
+  junk = junk + data;
+  var index, completed, message;
 
-compile_file(['nnode/NodeSwitch.java'], 0, runJava);
+  while(-1 != (index = junk.indexOf("$$"))){
+    completed = junk.substring(0, index);
+    junk = junk.substring(index + 2, junk.length);
+    
+    //console.log('java -> heroku : ' + completed);
+
+    var jo = JSON.parse(completed);
+    var name = firstNameToUser[jo.name];
+    var message = jo.message;
+
+    if (name !== "narrator")
+      slackbot.sendPM(name, message);
+    else if(channelID !== null)
+      slackbot.sendMsg(channelID, message);
+    
+  }
+}
+
+var channelID = null;
+
+function findChannel(){
+  var groups = slackbot.slackData.groups;
+  for(var i = 0; i < groups.length; i++){
+    if(groups[i].name === MAFIA_CHANNEL_NAME){
+      channelID = groups[i].id;
+      break;
+    }
+  }
+}
+
+compile_file(['nnode/SlackSwitch.java'], 0, runJava);
 
 slackbot.on('message', function (data) {
-    // If no text, return.
     if (typeof data.text === 'undefined')
     	return;
 
-    console.log(data);
     var message = data.text;
-    // If someone says `cake!!` respond to their message with 'user OOH, CAKE!! :cake:'
-    if (data.text === 'cake!!') 
-    	slackbot.sendMsg(data.channel, 
-    		'@' + slackbot.getUser(data.user).name + ' OOH, CAKE!! :cake:');
-
-    console.log(data);
-    console.log(data.channel);
-
-    // If the first character starts with %, you can change this to your own prefix of course.
-    if (data.text.charAt(0) === '%') {
-        // Split the command and it's arguments into an array
-        var command = data.text.substring(1).split(' ');
-
-        // If command[2] is not undefined, use command[1] to have all arguments in command[1]
-        if (typeof command[2] !== 'undefined') {
-            for (var i = 2; i < command.length; i++) {
-                command[1] = command[1] + ' ' + command[i];
-            }
-        }
-
-        // Switch to check which command has been requested.
-        switch (command[0].toLowerCase()) {
-            // If hello
-            case 'hello':
-                // Send message
-                slackbot.sendMsg(data.channel, 'Oh, hello @' + slack.getUser(data.user).name + ' !');
-                break;
-
-            case 'say':
-                var say = data.text.split('%say ');
-                slackbot.sendMsg(data.channel, say[1]);
-                break;
-        }
+    var channel = data.channel;
+    if(data.user === null)
+      return;
+    var user = slackbot.getUser(data.user);
+    if(message.toLowerCase() === 'start' && STARTERS.indexOf(user.name) != -1){
+      collectUsers();
+      slackbot.sendMsg(channel, 'starting');
+      return;
     }
+    if(!started)
+      return;
+    if(channelID === null)
+      findChannel();
+    if(channelID === data.channel){
+      if(message.length === 0)
+        return;
+      if(message[0] !== '-')
+        return;
+      message = message.substring(1);
+    }
+    var o = {};
+    o.from = userToFirstName[user.name];
+    o.message = message;
+    toJava(o);
 });
 
+var firstNameToUser = null;
+var userToFirstName = null;
+function collectUsers(){
+  firstNameToUser = {};
+  userToFirstName = {};
+  var slackRequire = require('slack-node')
+  slack = new slackRequire(apiToken);
 
+  slack.api('groups.list', {
+  }, function(err, response){
+    for(var i = 0; i < response.groups.length; i++){
+      if(response.groups[i].name === MAFIA_CHANNEL_NAME)
+        getUsers(response.groups[i].id);
+    }
+  });
+
+  var num = 0;
+
+  function getUsers(id){
+    slack.api('groups.info', {
+      channel: id
+    },function(err, response){
+      var members = response.group.members;
+      num = members.length;
+      for(var i = 0; i < members.length; i++){
+        getUserName(members[i]);
+      }
+    });
+  }
+
+  users = [];
+
+  function getUserName(id){
+    slack.api('users.info', {
+      user: id
+    },function(err, response){
+      var user = response.user;
+      var name;
+      if(user.profile['first_name'])
+        name = user.profile['first_name'];
+      else
+        name = user.name;
+      users.push(name);
+
+      firstNameToUser[name] = user.name;
+      userToFirstName[user.name] = name;
+      if(users.length == num){
+        startGame(users);
+      }
+    });
+  }
+}
+
+var started = false;
+function startGame(users){
+  started = true;
+  var o = {}
+  o.message = 'start';
+  o.players = users;
+  o.from = 'narrator';
+  toJava(o);
+}
+
+
+function toJava(o){
+  if(pipe === null || pipe === undefined)
+    return;
+
+  pipe.write(JSON.stringify(o) + "\n");
+}
 

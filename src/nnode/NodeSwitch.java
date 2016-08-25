@@ -14,13 +14,12 @@ import java.util.HashMap;
 import java.util.Scanner;
 
 import android.texting.TextHandler;
-import android.texting.TextInput;
 import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
 import shared.logic.Player;
 
-public class NodeSwitch implements TextInput{
+public class NodeSwitch{
 	
 	ServerSocket server;
 	Socket socket;
@@ -28,7 +27,7 @@ public class NodeSwitch implements TextInput{
 	TextHandler th;
 	InputStream input;
 	//protected HashMap<String, Instance> phoneBook;
-	protected ArrayList<Instance> instances;
+	public ArrayList<Instance> instances;
 	protected HashMap<String, NodePlayer> phoneBook;
 	
 
@@ -152,7 +151,7 @@ public class NodeSwitch implements TextInput{
     	}
     	Instance inst = instances.get(0);
     	for(Instance i: instances){
-    		if(i.n.getPlayerCount() > inst.n.getPlayerCount()){
+    		if(i.n.getPlayerCount() > inst.n.getPlayerCount() && !i.isFull()){
     			inst = i;
     		}
     	}
@@ -243,6 +242,7 @@ public class NodeSwitch implements TextInput{
     
     private ArrayList<LobbyMessage> lobbyMessages;
     protected ArrayList<NodePlayer> lobbyList;
+	public SwitchListener switchListener;
     private void addMessage(NodePlayer nPlayer, String message) throws JSONException{
     	
     	LobbyMessage messageToPush = new LobbyMessage(nPlayer, message);
@@ -301,6 +301,8 @@ public class NodeSwitch implements TextInput{
     	if(writer != null){
     		writer.println(s + "$$");
     		writer.flush();
+    	}else if(switchListener != null){
+    		switchListener.onSwitchMessage(s);
     	}
     }
     
@@ -310,5 +312,7 @@ public class NodeSwitch implements TextInput{
 		
 	}
 
-	
+	public interface SwitchListener{
+		public void onSwitchMessage(String s);
+	}
 }
