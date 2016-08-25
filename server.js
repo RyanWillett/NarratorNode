@@ -108,8 +108,11 @@ function web_send(name, message){
   var c = connections_mapping[name];
   //console.log(connections_mapping.length);
   if (c!== undefined && c !== null)
-    c.send(message);
-  //console.log('finished sending to ' + name);
+    c.send(message, function ack(error){
+      if(error === undefined || error === null)
+        return;
+      console.log(error);
+    });
 }
 
 var pipe = null;
