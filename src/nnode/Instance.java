@@ -9,11 +9,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 
-import android.texting.TextHandler;
 import json.JSONArray;
-import json.JSONConstants;
 import json.JSONException;
 import json.JSONObject;
+
+import android.texting.StateObject;
+import android.texting.TextHandler;
 import shared.event.Message;
 import shared.event.OGIMessage;
 import shared.logic.Member;
@@ -25,6 +26,8 @@ import shared.logic.exceptions.NarratorException;
 import shared.logic.exceptions.PlayerTargetingException;
 import shared.logic.listeners.NarratorListener;
 import shared.logic.support.Constants;
+import shared.logic.support.Faction;
+import shared.logic.support.FactionManager;
 import shared.logic.support.Random;
 import shared.logic.support.RoleTemplate;
 import shared.logic.support.StringChoice;
@@ -40,7 +43,7 @@ import shared.roles.SerialKiller;
 
 public class Instance implements NarratorListener{
 
-	protected Narrator n;
+	public Narrator n;
 	protected TextHandler th;
 	HashMap<Player, NodePlayer> phoneBook;
 	private NodeSwitch nc;
@@ -55,7 +58,7 @@ public class Instance implements NarratorListener{
 		r.setInt(Rules.DAY_LENGTH, 5);
 		r.setInt(Rules.NIGHT_LENGTH, 2);
         
-        th = new TextHandler(n, nc, new PlayerList());
+        th = new TextHandler(n, new PlayerList());
         fManager = new FactionManager(n);
 	}
 	
@@ -110,9 +113,9 @@ public class Instance implements NarratorListener{
 	}
 	static JSONObject GetGUIObject() throws JSONException{
 		JSONObject jo = new JSONObject();
-		jo.put(JSONConstants.guiUpdate, true);
+		jo.put(StateObject.guiUpdate, true);
 		jo.put("server", false);
-		jo.put(JSONConstants.type, new JSONArray());
+		jo.put(StateObject.type, new JSONArray());
 		return jo;
 	}
 	
@@ -183,6 +186,11 @@ public class Instance implements NarratorListener{
 	
 	FactionManager fManager;
 	
+	void sendGameState(PlayerList players) throws JSONException{
+		for(Player p: players)
+			sendGameState(p);
+	}
+	
 	void sendGameState(Player p) throws JSONException{
 		StateObject iObject = getInstObject();
 		iObject.addState(StateObject.ROLESLIST);
@@ -190,26 +198,27 @@ public class Instance implements NarratorListener{
 		iObject.addState(StateObject.DAYLABEL);
 		iObject.addState(StateObject.GRAVEYARD);
 		
-		iObject.addKey(JSONConstants.gameStart, n.isStarted());
-		iObject.addKey(JSONConstants.showButton, !n.isInProgress() || p.isAlive() && (n.isNight() || p.hasDayAction()));
-		iObject.addKey(JSONConstants.endedNight, n.isNight() && p.endedNight());
+		iObject.addKey(StateObject.gameStart, n.isStarted());
+		iObject.addKey(StateObject.showButton, !n.isInProgress() || p.isAlive() && (n.isNight() || p.hasDayAction()));
+		iObject.addKey(StateObject.endedNight, n.isNight() && p.endedNight());
 		
 		
 		if(n.isStarted()){
 			iObject.addState(StateObject.ROLEINFO);
-			iObject.addKey(JSONConstants.isDay, n.isDay());
+			iObject.addState(StateObject.ACTIVETEAMS);
+			iObject.addKey(StateObject.isDay, n.isDay());
 			if(n.isInProgress()){
-				iObject.addKey(JSONConstants.timer, getEndTime());
+				iObject.addKey(StateObject.timer, getEndTime());
 			}else{
-				iObject.addKey(JSONConstants.isFinished, true);
+				iObject.addKey(StateObject.isFinished, true);
 			}
 			if(n.isDay()){
-				iObject.addKey(JSONConstants.skipVote, p.getSkipper().getVoters().size());
-				iObject.addKey(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
+				iObject.addKey(StateObject.skipVote, p.getSkipper().getVoters().size());
+				iObject.addKey(StateObject.isSkipping, p.getSkipper() == p.getVoteTarget());
 			}
 		}else{
-			iObject.addKey(JSONConstants.isHost, p == host);
-			iObject.addKey(JSONConstants.host, host.getName());
+			iObject.addKey(StateObject.isHost, p == host);
+			iObject.addKey(StateObject.host, host.getName());
 			iObject.addState(StateObject.RULES);
 		}
 		iObject.send(Player.list(p));
@@ -262,7 +271,7 @@ public class Instance implements NarratorListener{
 		
 		Faction f = fManager.getFaction(color);
 		
-		Member newMember = f.makeAvailable(simpleName);
+		Member newMember = f.makeAvailable(simpleName, fManager);
 		
 		StateObject s = getInstObject();
 		
@@ -301,7 +310,7 @@ public class Instance implements NarratorListener{
 		
 		Faction f = fManager.getFaction(color);
 		
-		Member m = f.makeUnavailable(name);
+		Member m = f.makeUnavailable(name, fManager);
 		
 		StateObject s = getInstObject().addState(StateObject.RULES);
 		if(n.getAllRoles().contains(m)){
@@ -332,13 +341,52 @@ public class Instance implements NarratorListener{
 		Team team = n.getTeam(teamColor);
 		Team enemy = n.getTeam(enemyColor);
 		
-		team.setEnemies(enemy);
+		team.setAllies(enemy);
 
 		getInstObject().addState(StateObject.RULES).send(n._players);
 	}
 	
 	private StateObject getInstObject(){
-		return new StateObject(this);
+		return new InstObject(this);
+	}
+	
+	private static class InstObject extends StateObject{
+		
+		Instance i;
+		JSONObject jo;
+		public InstObject(Instance i) {
+				super(i.n, i.fManager);
+				this.i = i;
+				jo = new JSONObject();
+				try {
+					jo.put(StateObject.type, new JSONArray());
+					jo.put(StateObject.guiUpdate, true);
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+			}
+	
+		public boolean isActive(Player p) {
+			NodePlayer np = i.phoneBook.get(p);
+			if(np == null)
+				return false;
+			return np.isActive();
+		}
+	
+		public JSONObject getObject() throws JSONException {
+			return jo;
+		}
+	
+		public void write(Player p, JSONObject jo){
+			NodePlayer np = i.phoneBook.get(p);
+			if(np == null)
+				return;
+			try{
+				np.write(jo);
+			}catch(JSONException e){
+				e.printStackTrace();
+			}
+		}
 	}
 	
 	private PlayerList repickers = new PlayerList();
@@ -411,20 +459,20 @@ public class Instance implements NarratorListener{
     	Player p = np.player;
     	if (p == null)
     		throw new PlayerTargetingException(name + " wasn't found.");
-    	if(message.equals(JSONConstants.requestGameState)){
+    	if(message.equals(StateObject.requestGameState)){
     		sendGameState(p);
     		return;
     	}
     	
-    	if(message.equals(JSONConstants.requestChat)){
+    	if(message.equals(StateObject.requestChat)){
     		p.sendMessage(p.getEvents());
     		return;
 		}
     	
     	if(host == p){
-    		if(message.equals(JSONConstants.addRole)){
-    			String color = jo.getString(JSONConstants.roleColor);
-    			String displayed_name = jo.getString(JSONConstants.roleName);
+    		if(message.equals(StateObject.addRole)){
+    			String color = jo.getString(StateObject.roleColor);
+    			String displayed_name = jo.getString(StateObject.roleName);
     			String role_name = translateName(displayed_name);
     			
     			if(Role.isRole(role_name)){
@@ -462,12 +510,12 @@ public class Instance implements NarratorListener{
         			else
         				return;
     			}
-    			sendGameState();
+    			sendGameState(n.getAllPlayers());
     			return;
     		}
-    		if(message.equals(JSONConstants.removeRole)){
-    			String color = jo.getString(JSONConstants.roleColor);
-    			String displayed_name = jo.getString(JSONConstants.roleName);
+    		if(message.equals(StateObject.removeRole)){
+    			String color = jo.getString(StateObject.roleColor);
+    			String displayed_name = jo.getString(StateObject.roleName);
     			//String role_name = this.translateName(displayed_name);
     			RoleTemplate r = n.getAllRoles().get(displayed_name, color);
     			if(r != null){
@@ -476,9 +524,9 @@ public class Instance implements NarratorListener{
     			}
     			return;
     		}
-    		if(message.equals(JSONConstants.ruleChange)){
+    		if(message.equals(StateObject.ruleChange)){
     			Rules r = n.getRules();
-    			jo = jo.getJSONObject(JSONConstants.ruleChange);
+    			jo = jo.getJSONObject(StateObject.ruleChange);
     			JSONObject inputJRule;
     			for(String id: r.rules.keySet()){
     				inputJRule = jo.getJSONObject(id);
@@ -520,7 +568,7 @@ public class Instance implements NarratorListener{
     			addTeam(jo);
     			return;
     		}
-    		else if(message.equals("deleteTeam")){
+    		else if(message.equals(StateObject.deleteTeam)){
     			deleteTeam(jo);
     			return;
     		}
@@ -541,7 +589,7 @@ public class Instance implements NarratorListener{
     			return;
     		}
     		
-    		if(message.equals(JSONConstants.startGame)){
+    		if(message.equals(StateObject.startGame)){
     			try{
     				startGame();
     			}catch(NarratorException e){
@@ -554,7 +602,7 @@ public class Instance implements NarratorListener{
     		}
 		}
 
-    	if(message.equals("leaveGame")){
+    	if(message.equals(StateObject.leaveGame)){
     		np.leaveGame();
     		return;
     	}
@@ -669,14 +717,18 @@ public class Instance implements NarratorListener{
 	public void onArsonDayBurn(Player arson, PlayerList burned) {
 		resetChat();
 	}
+	
+	public void onAssassination(Player assassin, Player target){
+		resetChat();
+	}
 
 	private void sendVotes(){
 		try{
 			for(Player p: n.getAllPlayers()){
 				StateObject io = getInstObject();
 				io.addState(StateObject.PLAYERLISTS);
-				io.addKey(JSONConstants.skipVote, p.getSkipper().getVoters().size());
-				io.addKey(JSONConstants.isSkipping, p.getSkipper() == p.getVoteTarget());
+				io.addKey(StateObject.skipVote, p.getSkipper().getVoters().size());
+				io.addKey(StateObject.isSkipping, p.getSkipper() == p.getVoteTarget());
 				io.send(Player.list(p));
 			}
 		}catch(JSONException e){}
@@ -697,28 +749,20 @@ public class Instance implements NarratorListener{
 	}
 
 	public void onNightTarget(Player owner, Player target) {
-		try {
-			getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
-		} catch (JSONException e) {}
-		
+		getInstObject().addState(StateObject.PLAYERLISTS).send(owner);		
 	}
 
 	public void onNightTargetRemove(Player owner, Player prev) {
-		try {
 			getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
-		} catch (JSONException e) {}
 	}
 
-	@Override
 	public void onEndNight(Player p) {
-		// TODO Auto-generated method stub
-		
+		getInstObject().addKey(StateObject.endedNight, n.isNight()).send(p);
 	}
 
-	@Override
+	
 	public void onCancelEndNight(Player p) {
-		// TODO Auto-generated method stub
-		
+		getInstObject().addKey(StateObject.endedNight, false).send(p);
 	}
 
 	@Override
