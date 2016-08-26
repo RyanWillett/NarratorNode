@@ -337,7 +337,6 @@ function setCatalogue(){
 
 		}else{
 			var obj = getMember(e.target);
-			console.log(obj);
 			$("#editAlliesButton, #editRolesButton, #deleteTeamButton").hide();
 			$(".addTeamTrio").hide();
 			setActiveRule(obj.rule);
@@ -882,7 +881,12 @@ function handleObject(object){
 					var activeFactionColor = gameState.activeFaction.color;
 					var newFaction = gameState.factions[activeFactionColor];
 					if(gameState.activeRule !== null){
-						setActiveRule(gameState.factions[gameState.activeRule.name]);
+						if(gameState.activeRule.enemies === undefined){
+							var tag = gameState.activeRule.name + gameState.activeRule.color;
+							setActiveRule(gameState.factions[tag]);
+						}
+						else
+							setActiveRule(gameState.factions[gameState.activeRule.name]);
 					}
 					gameState.activeFaction = newFaction;
 					var header = $("#roleDescriptionLabel");
