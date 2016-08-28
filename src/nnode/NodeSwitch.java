@@ -11,6 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.Scanner;
 
 import android.texting.TextHandler;
@@ -67,12 +68,28 @@ public class NodeSwitch{
     	if(in != null)
     		in.write(message + "\n");
     }
-    
+    private static final String[] BAD_WORDS = {
+    		"ANUS", "ARSE", "CLIT", "COCK", "COON",
+    		"CUNT", "DAGO", "DAMN", "DICK", "DIKE",
+    		"DYKE", "FUCK", "GOOK", "HEEB", "HELL",
+    		"HOMO", "JIZZ", "KIKE", "KUNT", "KYKE",
+    		"MICK", "MUFF", "PAKI", "PISS", "POON",
+    		"PUTO", "SHIT", "SHIZ", "SLUT", "SMEG",
+    		"SPIC", "SPIC", "TARD", "TITS", "TWAT",
+    		"WANK"};
+    private ArrayList<String> activeIDs;
 	public NodeSwitch() {
 		lobbyList = new ArrayList<>();
     	lobbyMessages = new ArrayList<>();
     	phoneBook = new HashMap<>();
     	instances = new ArrayList<>();
+    	r = new Random();
+    	idToInstance = new HashMap<>();
+    	
+    	activeIDs = new ArrayList<String>();
+    	for(String bad_word: BAD_WORDS){
+    		activeIDs.add(bad_word);
+    	}
 	}
     
     @SuppressWarnings("unused")
@@ -142,6 +159,37 @@ public class NodeSwitch{
     		}
     	}
     	return null;
+    }
+    
+    private static final int offset = (int) 'A';
+    private Random r;
+    
+    //could be optimized by not selecting 'bad numbers' first
+    
+    private HashMap<String, Instance> idToInstance;
+    public String getID(Instance i){
+    	String id = getID();
+    	idToInstance.put(id, i);
+    	return id;
+    }
+    public void removeInstance(String id){
+    	idToInstance.remove(id);
+    }
+    public String getID(){
+    	int id = r.nextInt(456976) + 1;
+    	StringBuilder sb = new StringBuilder();
+    	
+    	int i;
+    	while(sb.length() < 4){
+    		i = (id % 26) + offset;
+    		sb.append(((char) i));
+    		id -= (i - offset);
+    		id /= 26;
+    	}
+    	String word = sb.toString();
+    	if(activeIDs.contains(word))
+    		return getID();
+    	return word;
     }
     
     public Instance getInstance(){
@@ -281,7 +329,12 @@ public class NodeSwitch{
         				removePlayerFromLobby(np);
     					np.joinGame(i);
     				}else{
-    					np.sendLobbyMessage("Couldn't find that user!");
+    					i = idToInstance.get(jo.getString("hostName").toUpperCase());
+    					if(i != null){ // observer mode
+    						i.addObserver(np);
+    					}else{
+    						np.sendLobbyMessage("Couldn't find that user!");
+    					}
     				}
     					
     			}

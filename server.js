@@ -9,28 +9,12 @@ const LOG_CLIENT_OUTPUT = false;
   databaseURL: "https://narrator-119be.firebaseio.com"
 });*/
 
+var gcm = require('node-gcm');
+var androidNotifier = new gcm.Sender(require('./keys').androidNotifToken);
+
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
 };
-
-function walk(dir) {
-  var results = [];
-  var list = fs.readdirSync(dir);
-  list.forEach(function(file) {
-    file = require("path").join(dir,file);
-    var stat = fs.statSync(file);
-    if (stat && stat.isDirectory())
-      results = results.concat(walk(file));
-    else{
-      file = file.toString();
-      if (file.endsWith(".java")){
-        file = file.replace('src/', '');
-        results.push(file);
-      }
-    }
-  });
-  return results;
-}
 
 function classExists(name){
   name = name.replace(".java", ".class");
@@ -54,15 +38,8 @@ function compile_file(files, i, final_func){
   }
 
   comp_name = files[i];
-  /*if (classExists(comp_name)){
-    console.log('already compiled: ' + comp_name);
-    compile_file(files, i + 1, final_func);
-    return;
-  }*/
   console.log('compiling ' + comp_name);
-  var command = "javac  -sourcepath src "; 
-  //if (process.env.PORT === undefined) 
-    command += "src/";
+  var command = "javac  -sourcepath src src/";
   exec(command + comp_name, {}, function(error, stdout, stderr){
     if (error) {
       console.log(error);
@@ -72,8 +49,21 @@ function compile_file(files, i, final_func){
   });
 }
 
-var toCompileWithClass = walk('src');
-
+function sendNotification(title, message, recipients){
+  var message = new gcm.Message({
+      data: { 
+        'title':'The title',         //this is the Title of the notification
+        'message':'My custom message' //This is the subtext of the notification
+      }
+  });
+     
+  androidNotifier.send(message, { registrationTokens: recipients }, function (err, response) {
+      if(err) 
+        console.error(err);
+      else if(response.failure !=== 0)
+        console.log(response);
+  });
+}
 
 
 var WebSocketServer = require("ws").Server;
@@ -82,7 +72,7 @@ var express = require("express");
 var app = express();
 var port = process.env.PORT || 3000;
 
-app.use(express.static(__dirname + "/public"))
+app.use(express.static(__dirname + "/public"));
 
 var server = http.createServer(app);
 server.listen(port);
@@ -149,8 +139,10 @@ wss.on("connection", function(ws) {
     try{
       o = JSON.parse(message);
 
-      if(o.name === null || o.name === undefined)
-        return;
+      if(o.name === null || o.name === undefined){
+        o.name = generateName();
+        message = JSON.stringify(o);
+      }
       if (!(o.name in connections_mapping)){
         //o.message = 'greeting';  message should already be greeting
         pipe_write(message);
@@ -191,6 +183,11 @@ wss.on("connection", function(ws) {
   });
 })
 
+var observerID = 1;
+function generateName(){
+  observerID++;
+  return "oberver" + observerID;
+}
 
 function handle_java_event(jo){
   if (jo.message === "closeConnection"){

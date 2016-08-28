@@ -23,6 +23,7 @@ gameState.commandsIndex = 0;
 gameState.isOver = false;
 gameState.timer = -2;
 gameState.isAlive = true;
+gameState.isObserver = true;
 
 gameState.editingAllies = false;
 gameState.editingRoles = false;
@@ -31,6 +32,8 @@ var J = {};
 J.guiUpdate = 'guiUpdate';
 
 J.dayLabel = 'dayLabel';
+J.gameID = 'gameID';
+J.isObserver = 'isObserver';
 
 J.type = 'type';
 
@@ -67,13 +70,17 @@ J.ruleChange = "ruleChange";
 J.skipVote = "skipVote";
 J.isSkipping = "isSkipping";
 
+function isOnLobby(){
+	return $("#lobby_page").is(":visible");
+}
+
 function addToChat(message){
 	if (message.length === 0)
 		return;
 	var toAppend = message.replace('\n', '');
 	var element;
 	var texts;
-	if($("#lobby_page").is(":visible")){
+	if(isOnLobby()){
 		element = $('#lobby_messages');
 	}else if(gameState.started){
 		element = $('#messages');
@@ -82,14 +89,14 @@ function addToChat(message){
 	}
 	element.append($('<li>').html(toAppend));
 
-	if($("#lobby_page").is(":visible")){
+	if(isOnLobby()){
 		texts = $('#lobby_messages li').length - 1;
 	}else if(gameState.started){
 		texts = $('#messages li').length - 1;
 	}else{
 		texts = $('#pregame_messages li').length - 1;
 	}
-	if($("#lobby_page").is(":visible")){
+	if(isOnLobby()){
 		$('#lobby_messages li')[texts].scrollIntoView();
 	}else if(gameState.started)
 		$('#messages li')[texts].scrollIntoView();
@@ -817,9 +824,21 @@ function setHost(bool){
 			web_send({message: J.startGame});	
 	});
 	leaveButton.on("click", function(){
+		if(gameState.isObserver){
+			location.reload();
+			return;
+		}
 		$("#pregame_messages").empty();
 		web_send({message: "leaveGame"});
 	});
+}
+
+function setGameID(){
+	if(gameState.started){
+		
+	}else{
+		$("#setup_top_div h2").text("New Game #" + gameState.gameID);
+	}
 }
 
 function setGlobalPlayerList(players){
@@ -868,7 +887,14 @@ function handleObject(object){
 		}
 		if(object[J.endedNight] !== undefined)
 			gameState.endedNight = object[J.endedNight];
-		
+		if(object[J.isObserver] !== undefined)
+			gameState.isObserver = object[J.isObserver];
+		if(object[J.gameID] !== undefined){
+			gameState.gameID = object[J.gameID];
+			console.log(gameState.gameID);
+			setGameID();
+		}
+
 		if(hasType(J.rules, object.type)){
 			if(gameState.factions !== undefined && gameState.factions.factionNames.length !== object.factions.factionNames.length)
 				$("#newTeamColor #newTeamName").val("");
@@ -994,8 +1020,10 @@ function setSubmitFunction(){
 			message = 'say ' + team + ' ' + m.val();
 		}
 		
-		if(m.val().length === 0)
+		if(m.val().length === 0 || gameState.isObserver){
+			m.val('');
 			return false;
+		}
 
 		var o = {}
 		o.action = false;
