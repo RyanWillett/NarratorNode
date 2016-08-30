@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.Scanner;
 
+import android.texting.StateObject;
 import android.texting.TextHandler;
 import json.JSONArray;
 import json.JSONException;
@@ -313,7 +314,7 @@ public class NodeSwitch{
     	Instance i = np.inst;
     	if(i == null){
     		String message = jo.getString("message");
-    		if(jo.getBoolean("action")){
+    		if(jo.has("action") && jo.getBoolean("action")){
     			if(message.equals("joinPublic")){
     				removePlayerFromLobby(np);
     				i = getInstance();
@@ -349,8 +350,20 @@ public class NodeSwitch{
     }
     public void write(NodePlayer np, JSONObject jo) throws JSONException{
     	jo.put("name", np.name);
-    	String s = jo.toString();
     	//System.out.println("(java -> heroku): " + s + "\n");
+    	nodePush(jo);
+    }
+    private void serverWrite(JSONObject jo){
+		try {
+			jo.put("server", true);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		nodePush(jo);
+	}
+    
+    private void nodePush(JSONObject jo){
+    	String s = jo.toString();
     	if(writer != null){
     		writer.println(s + "$$");
     		writer.flush();
@@ -368,4 +381,29 @@ public class NodeSwitch{
 	public interface SwitchListener{
 		public void onSwitchMessage(String s);
 	}
+
+	public void sendNotification(ArrayList<NodePlayer> nList, String title, String subtitle) {
+		JSONObject jo = new JSONObject();
+		try {
+			jo.put(StateObject.message, "sendNotification");
+			JSONArray jRecipients = new JSONArray();
+			for(NodePlayer np: nList){
+				if(!np.isActive())
+					jRecipients.put(np.name);
+				//else
+					//System.out.println(np.name + " is active so, won't be sending something to him");
+			}
+			if(jRecipients.length() == 0)
+				return;
+			jo.put("recipients", jRecipients);
+			jo.put("title", title);
+			jo.put("subtitle", subtitle);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		
+		serverWrite(jo);
+	}
+	
+	
 }

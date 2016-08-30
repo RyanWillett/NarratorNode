@@ -12,7 +12,7 @@ public class NodePlayer {
 	protected String name;
 	protected Player player;
 	private NodeSwitch nc;
-	private boolean active;
+	private boolean active = false;
 	
 	public NodePlayer(String name, NodeSwitch nc){
 		this.name  = name;

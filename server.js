@@ -1,5 +1,8 @@
-var exec = require('child_process').exec;
-var fs = require('fs');
+var exec  = require('child_process').exec;
+var fs    = require('fs');
+var gcm   = require('node-gcm');
+var mysql = require('mysql');
+var keys  = require('./keys');
 const NARRATOR = "Narrator";
 const READ_JAVA_OUTPUT = true;
 const LOG_CLIENT_OUTPUT = false;
@@ -9,8 +12,32 @@ const LOG_CLIENT_OUTPUT = false;
   databaseURL: "https://narrator-119be.firebaseio.com"
 });*/
 
-var gcm = require('node-gcm');
-var androidNotifier = new gcm.Sender(require('./keys').androidNotifToken);
+var androidNotifier = new gcm.Sender(keys.androidNotifToken);
+
+var db_connection = mysql.createConnection({
+  host     : 'localhost',
+  user     : keys.databaseUser,
+});
+
+db_connection.connect(function(err) {
+  if(err === null){
+    console.log('using narrator table');
+    db_connection.query('use narrator');
+  }else
+    console.log(err);
+});
+
+function query(query, fini){
+  var func = function(err, results){
+    if(err === null){
+      if(fini !== undefined)
+        fini(results);
+    }else{
+      log(err);
+    }
+  }
+  db_connection.query(query, func);
+}
 
 String.prototype.endsWith = function(suffix) {
     return this.indexOf(suffix, this.length - suffix.length) !== -1;
@@ -52,15 +79,15 @@ function compile_file(files, i, final_func){
 function sendNotification(title, message, recipients){
   var message = new gcm.Message({
       data: { 
-        'title':'The title',         //this is the Title of the notification
-        'message':'My custom message' //This is the subtext of the notification
+        'title': title,         //this is the Title of the notification
+        'message': message //This is the subtext of the notification
       }
   });
      
   androidNotifier.send(message, { registrationTokens: recipients }, function (err, response) {
       if(err) 
         console.error(err);
-      else if(response.failure !=== 0)
+      else if(response.failure !== 0)
         console.log(response);
   });
 }
@@ -142,14 +169,13 @@ wss.on("connection", function(ws) {
       if(o.name === null || o.name === undefined){
         o.name = generateName();
         message = JSON.stringify(o);
+        o = JSON.parse(message);
       }
-      if (!(o.name in connections_mapping)){
-        //o.message = 'greeting';  message should already be greeting
-        pipe_write(message);
-        connections_mapping[o.name] = ws;
-        return;
+      if(o.token !== undefined && o.token !== null){
+        console.log('saving notification id');
+        saveAndroidToken(o.name, o.token);
       }
-      if(connections_mapping[o.name] != ws){
+      if(connections_mapping[o.name] != ws && connections_mapping[o.name] !== undefined){
         connections_mapping[o.name].close();
       }
       connections_mapping[o.name] = ws;
@@ -170,7 +196,6 @@ wss.on("connection", function(ws) {
     var i;
     for (i in connections_mapping){
     	if (connections_mapping[i] === ws){
-        console.log("websocket connection with " + i + " close");
         o = {};
         o.server = true;
         o.message = 'disconnect';
@@ -182,6 +207,13 @@ wss.on("connection", function(ws) {
     }
   });
 })
+
+function saveAndroidToken(name, tokenID){
+  var queryString = "insert into users (username, android_id) values('" + name;
+  queryString += "', '" + tokenID + "') on duplicate key update android_id = '";
+  queryString += tokenID + "'";
+  query(queryString);
+}
 
 var observerID = 1;
 function generateName(){
@@ -197,6 +229,31 @@ function handle_java_event(jo){
       connections_mapping[name].close();
       delete connections_mapping[name];
     }
+  }
+  if (jo.message === "sendNotification"){
+    var title = jo.title;
+    var subtitle = jo.subtitle;
+    var users = jo.recipients;
+
+    var fini = function(results){
+      var tokens = [];
+      var id;
+      for(var i = 0; i < results.length; i++){
+        id = results[i]['android_id'];
+        tokens.push(id);
+      }
+      sendNotification(title, subtitle, tokens);
+    }
+
+    var queryString = "SELECT android_id FROM users WHERE username in (";
+    for(var i = 0; i < users.length; i++){
+      queryString += ("'" + users[i]);
+      if(i !== users.length - 1){
+        queryString += "', "
+      }
+    }
+    queryString += "')";
+    query(queryString, fini);
   }
 }
 

@@ -14,6 +14,7 @@ import android.texting.TextHandler;
 import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
+import shared.event.ChatMessage;
 import shared.event.Message;
 import shared.event.OGIMessage;
 import shared.logic.Member;
@@ -52,6 +53,7 @@ public class Instance implements NarratorListener{
 		this.nc = nc;
 		phoneBook = new HashMap<>();
 		n = Narrator.Default();
+    	n.addListener(this);
 		
 		Rules r = n.getRules();
 		r.setBool(Rules.DAY_START, Narrator.DAY_START);
@@ -139,7 +141,6 @@ public class Instance implements NarratorListener{
 		th.setTexters(n.getAllPlayers());
 		if(nc != null)
 			nc.instances.remove(this);
-    	n.addListener(this);
     	n._players.sortByName();
 		n.startGame();
 	}
@@ -664,6 +665,8 @@ public class Instance implements NarratorListener{
 		startTimer();
 		sendGameState();
 		resetChat();
+		
+		sendNotification("Game has started!");
 	}
 
 	protected void resetChat(Player p){
@@ -703,6 +706,7 @@ public class Instance implements NarratorListener{
 		sendGameState();
 		resetChat();
 		
+		sendNotification("The day has ended! Submit your night actions.");
 	}
 
 	public void onDayStart(PlayerList newDead) {
@@ -710,7 +714,7 @@ public class Instance implements NarratorListener{
 		sendGameState();
 		
 		resetChat();
-		
+		sendNotification("A new day has started...");
 	}
 	
 	private void saveCommands(){
@@ -748,23 +752,26 @@ public class Instance implements NarratorListener{
 		timer.interrupt();
 		sendGameState();
 		resetChat();
+		sendNotification(n.getWinMessage().access(Message.PUBLIC, false));
     	new OGIMessage(n.getAllPlayers(), "Server : " + "Press refresh to join another game!");
     	nc.removeInstance(gameID);
 	}
 	
 	public void onMayorReveal(Player mayor) {
-		
+		sendNotification(mayor.getDescription() + " has revealed as the mayor!");
 	}
 
 	public void onArsonDayBurn(Player arson, PlayerList burned) {
 		resetChat();
+		sendNotification("There was a fiery explosion!");
 	}
 	
 	public void onAssassination(Player assassin, Player target){
 		resetChat();
+		sendNotification(target.getDescription() + " was assassinated!");
 	}
 
-	private void sendVotes(){
+	private void sendVotes(Message event){
 		try{
 			for(Player p: n.getAllPlayers()){
 				StateObject io = getInstObject();
@@ -782,28 +789,30 @@ public class Instance implements NarratorListener{
 				observer.write(jo);
 			}
 		}catch(JSONException e){}
+
+		sendNotification(event);
 	}
 	
 	public void onVote(Player voter, Player target, int voteCount, Message e) {
-		sendVotes();
+		sendVotes(e);
+		
 		
 	}
 
 	public void onUnvote(Player voter, Player prev, int voteCountToLynch, Message e) {
-		sendVotes();
+		sendVotes(e);
 	}
 
 	public void onChangeVote(Player voter, Player target, Player prevTarget, int toLynch, Message e) {
-		sendVotes();
-		
+		sendVotes(e);
 	}
 
 	public void onNightTarget(Player owner, Player target) {
-		getInstObject().addState(StateObject.PLAYERLISTS).send(owner);		
+		getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
 	}
 
 	public void onNightTargetRemove(Player owner, Player prev) {
-			getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
+		getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
 	}
 
 	public void onEndNight(Player p) {
@@ -815,11 +824,46 @@ public class Instance implements NarratorListener{
 		getInstObject().addKey(StateObject.endedNight, false).send(p);
 	}
 
+	public void sendNotification(String s){
+		nc.sendNotification(getNodePlayerList(n.getAllPlayers()), "Narrator", s);
+	}
+	
+	private ArrayList<NodePlayer> getNodePlayerList(PlayerList pl){
+		ArrayList<NodePlayer> nList = new ArrayList<>();
+		
+		for(Player p: pl){
+			nList.add(phoneBook.get(p));
+		}
+		return nList;
+	}
+	
+	public void sendNotification(Message e){
+		String text;
+		for(Player p: n.getAllPlayers()){
+			text = e.access(p, false);
+			if(text.length() != 0){
+				sendNotification(p, text);
+			}
+		}
+	}
+	
 	public void onMessageReceive(Player receiver, Message e) {
-		
-		
+		if(e instanceof ChatMessage){
+			ChatMessage cm = (ChatMessage) e;
+			sendNotification(receiver, cm.sender.getName(), cm.message);
+		}else
+			sendNotification(receiver, e.access(receiver, false));
 	}
 
+	public void sendNotification(Player player, String subtitle){
+		sendNotification(player, "Narrator", subtitle);
+	}
+	public void sendNotification(Player player, String title, String subtitle){
+		NodePlayer np = phoneBook.get(player);
+		ArrayList<NodePlayer> nList = new ArrayList<>();
+		nList.add(np);
+		nc.sendNotification(nList, title, subtitle);
+	}
 	
 	public void onModKill(Player bad) {
 		resetChat();

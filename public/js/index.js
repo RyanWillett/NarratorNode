@@ -849,6 +849,7 @@ function setGlobalPlayerList(players){
 	}
 }
 
+var gameObject = null;
 function hasType(key, type){
 	return (type.indexOf(key) >= 0);
 }
