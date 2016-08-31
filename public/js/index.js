@@ -512,7 +512,8 @@ function refreshPlayers(){
 			li.find(">:first-child").prop('checked', player.playerSelected);
 		li.appendTo(selectables);
 	}
-	$('.radios').prop('disabled', gameState.endedNight && !gameState.isDay);
+	var disabledRadios = gameState.isObserver || gameState.endedNight && !gameState.isDay;
+	$('.radios').prop('disabled', disabledRadios);
 
 	if(gameState.started)
 		$('.radios').change(filterRadio);

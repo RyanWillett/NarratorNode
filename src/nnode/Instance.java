@@ -10,7 +10,6 @@ import java.util.Date;
 import java.util.HashMap;
 
 import android.texting.StateObject;
-import android.texting.TextHandler;
 import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
@@ -25,6 +24,7 @@ import shared.logic.Team;
 import shared.logic.exceptions.NarratorException;
 import shared.logic.exceptions.PlayerTargetingException;
 import shared.logic.listeners.NarratorListener;
+import shared.logic.support.CommandHandler;
 import shared.logic.support.Constants;
 import shared.logic.support.Faction;
 import shared.logic.support.FactionManager;
@@ -44,7 +44,7 @@ import shared.roles.SerialKiller;
 public class Instance implements NarratorListener{
 
 	public Narrator n;
-	protected TextHandler th;
+	protected CommandHandler ch;
 	HashMap<Player, NodePlayer> phoneBook;
 	private NodeSwitch nc;
 	private String gameID;
@@ -60,8 +60,8 @@ public class Instance implements NarratorListener{
 		r.setInt(Rules.DAY_LENGTH, 5);
 		r.setInt(Rules.NIGHT_LENGTH, 2);
         
-        th = new TextHandler(n, new PlayerList());
         fManager = new FactionManager(n);
+        ch = new CommandHandler(n);
         
         gameID = nc.getID(this);
         observers = new ArrayList<>();
@@ -108,7 +108,10 @@ public class Instance implements NarratorListener{
 		j1.put("message", np.name + " has joined the lobby.");
 		j1.put("server", false);
 		j1.put("from", "Server");
-		announce(j1, p);
+		announce(j1, p);  //p is excluded from the announcement
+		
+		if(n.getPlayerCount() == n.getAllRoles().size())
+			sendNotification(p, "Game is now ready to start!");
 		
 		return p;
 	}
@@ -138,7 +141,6 @@ public class Instance implements NarratorListener{
 	}
 	
 	private void startGame(){
-		th.setTexters(n.getAllPlayers());
 		if(nc != null)
 			nc.instances.remove(this);
     	n._players.sortByName();
@@ -652,7 +654,7 @@ public class Instance implements NarratorListener{
     	
     	
 		try{
-			th.text(p, message, false);
+			ch.command(p, message, name);
 		}catch (Throwable t){
 			t.printStackTrace();
 			new OGIMessage(p, "Server : " + t.getMessage());
@@ -752,22 +754,27 @@ public class Instance implements NarratorListener{
 		timer.interrupt();
 		sendGameState();
 		resetChat();
+		broadcast(n.getWinMessage());
 		sendNotification(n.getWinMessage().access(Message.PUBLIC, false));
     	new OGIMessage(n.getAllPlayers(), "Server : " + "Press refresh to join another game!");
     	nc.removeInstance(gameID);
 	}
 	
-	public void onMayorReveal(Player mayor) {
+	public void onMayorReveal(Player mayor, Message e) {
+		sendVotes(null);
+		broadcast(e);
 		sendNotification(mayor.getDescription() + " has revealed as the mayor!");
 	}
 
-	public void onArsonDayBurn(Player arson, PlayerList burned) {
+	public void onArsonDayBurn(Player arson, PlayerList burned, Message e) {
 		resetChat();
+		sendGameState();
 		sendNotification("There was a fiery explosion!");
 	}
 	
-	public void onAssassination(Player assassin, Player target){
+	public void onAssassination(Player assassin, Player target, Message e){
 		resetChat();
+		sendGameState();
 		sendNotification(target.getDescription() + " was assassinated!");
 	}
 
@@ -790,7 +797,10 @@ public class Instance implements NarratorListener{
 			}
 		}catch(JSONException e){}
 
-		sendNotification(event);
+		if(event != null){
+			broadcast(event);
+			sendNotification(event);
+		}
 	}
 	
 	public void onVote(Player voter, Player target, int voteCount, Message e) {
@@ -808,6 +818,7 @@ public class Instance implements NarratorListener{
 	}
 
 	public void onNightTarget(Player owner, Player target) {
+		//feedback already being sent and stored
 		getInstObject().addState(StateObject.PLAYERLISTS).send(owner);
 	}
 
@@ -860,6 +871,8 @@ public class Instance implements NarratorListener{
 	}
 	public void sendNotification(Player player, String title, String subtitle){
 		NodePlayer np = phoneBook.get(player);
+		if(np.isActive())
+			return;
 		ArrayList<NodePlayer> nList = new ArrayList<>();
 		nList.add(np);
 		nc.sendNotification(nList, title, subtitle);
@@ -870,6 +883,12 @@ public class Instance implements NarratorListener{
 		
 	}
 
+	
+	public void broadcast(Message m){
+		for(Player p: n.getAllPlayers()){
+			p.sendMessage(m);
+		}
+	}
 	
 	public void announce(JSONObject j1, Player excluded) throws JSONException {
 		for (Player p: n.getAllPlayers()){

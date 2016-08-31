@@ -21,13 +21,20 @@ var db_connection = mysql.createConnection({
 
 db_connection.connect(function(err) {
   if(err === null){
-    console.log('using narrator table');
+    console.log('Database connection success!\n\tUsing \'Users\' table');
     db_connection.query('use narrator');
   }else
-    console.log(err);
+    if(err.code !=='ER_ACCESS_DENIED_ERROR' || !keys.runningLocally)
+      console.log(err);
+    else{
+      console.log("No connection to database, because this is a local session.");
+      db_connection = null;
+    }
 });
 
 function query(query, fini){
+  if(db_connection === null)
+    return;
   var func = function(err, results){
     if(err === null){
       if(fini !== undefined)
@@ -104,10 +111,8 @@ app.use(express.static(__dirname + "/public"));
 var server = http.createServer(app);
 server.listen(port);
 
-console.log("http server listening on %d", port);
-
 var wss = new WebSocketServer({server: server});
-console.log("websocket server created");
+console.log("Websocket server created...");
 
 
 /*function web_send_all(message){
@@ -301,7 +306,7 @@ function connectClient(){
 }
 
 function runJava(){
-  console.log('running java prog');
+  console.log('Starting java process...');
   setTimeout(connectClient, 3000);
   var spawn = require('child_process').spawn
   java = spawn("java", ["nnode/NodeSwitch"], {cwd: 'src'});
