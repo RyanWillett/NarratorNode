@@ -347,7 +347,7 @@ public class Instance implements NarratorListener{
 		
 		StateObject s = getInstObject().addState(StateObject.RULES);
 		if(n.getAllRoles().contains(m)){
-			n.getAllRoles().remove(m);
+			n.getAllRoles().purge(m);
 			s.addState(StateObject.ROLESLIST);
 		}
 		
