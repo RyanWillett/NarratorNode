@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.HashMap;
 
 import android.texting.StateObject;
+import android.texting.TextHandler;
 import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
@@ -25,6 +26,7 @@ import shared.logic.exceptions.NarratorException;
 import shared.logic.exceptions.PlayerTargetingException;
 import shared.logic.listeners.NarratorListener;
 import shared.logic.support.CommandHandler;
+import shared.logic.support.Communicator;
 import shared.logic.support.Constants;
 import shared.logic.support.Faction;
 import shared.logic.support.FactionManager;
@@ -46,8 +48,10 @@ public class Instance implements NarratorListener{
 	public Narrator n;
 	protected CommandHandler ch;
 	HashMap<Player, NodePlayer> phoneBook;
+	HashMap<String, SlackPlayer> slackMap;
+	protected PlayerList webUsers, slackPlayers;
 	private NodeSwitch nc;
-	private String gameID;
+	String gameID;
 	
 	public Instance(NodeSwitch nc){
 		this.nc = nc;
@@ -65,17 +69,20 @@ public class Instance implements NarratorListener{
         
         gameID = nc.getID(this);
         observers = new ArrayList<>();
+        webUsers = new PlayerList();
+        slackPlayers = new PlayerList();
+        slackMap = new HashMap<>();
 	}
 	
 	public void removePlayer(NodePlayer leaver) throws JSONException {
 		n.removePlayer(leaver.player);
 		
 		if(leaver.player == host){
-			if(n.getAllPlayers().isEmpty()){
+			if(webUsers.isEmpty()){
 				nc.instances.remove(this);
 			}else{
 				repickers = new PlayerList();
-				host = n.getAllPlayers().get(0);
+				host = webUsers.get(0);
 				sendGameState(host);
 			}
 		}
@@ -84,17 +91,18 @@ public class Instance implements NarratorListener{
 		leaver.player = null;
 		leaver.inst = null;
 		
+		broadcastToSlackUsers(leaver.name + " has left the lobby.");
+		new OGIMessage(n.getAllPlayers().remove(slackPlayers), leaver.name + " has left the lobby.");
 		
-		JSONObject j1 = new JSONObject();
-		j1.put("message", leaver.name + " has left the lobby.");
-		j1.put("server", false);
-		j1.put("from", "Server");
-		announce(j1, null);
+
+		
+		new OGIMessage(n._players, leaver.name + " has left the lobby.");
+		
 		onPlayerListStatusChange();
 	}
 	
-	public Player addPlayer(NodePlayer np) throws JSONException{
-    	Player p = n.addPlayer(np.name, new NodeCommunicator(nc, np));
+	public Player addPlayer(NodePlayer np, Communicator c) throws JSONException{
+    	Player p = n.addPlayer(np.name, c);
 		np.player = p;
 		np.inst = this;
 		phoneBook.put(p, np);
@@ -104,20 +112,18 @@ public class Instance implements NarratorListener{
 		
 		sendGameState();
 		
-		JSONObject j1 = new JSONObject();
-		j1.put("message", np.name + " has joined the lobby.");
-		j1.put("server", false);
-		j1.put("from", "Server");
-		announce(j1, p);  //p is excluded from the announcement
+		broadcastToSlackUsers(np.name + " has joined the lobby.");
+		new OGIMessage(n.getAllPlayers().remove(p).remove(slackPlayers), np.name + " has joined the lobby.");
+		
 		
 		if(n.getPlayerCount() == n.getAllRoles().size())
-			sendNotification(p, "Game is now ready to start!");
+			sendNotification(host, "Game is now ready to start!");
 		
 		return p;
 	}
 	
-	private ArrayList<NodePlayer> observers;
-	public void addObserver(NodePlayer np) {
+	private ArrayList<WebPlayer> observers;
+	public void addObserver(WebPlayer np) {
 		observers.add(np);
 		try {
 			JSONObject jo = sendGameState((Player) null);
@@ -127,10 +133,10 @@ public class Instance implements NarratorListener{
 		}
 		
 	}
-	
+		
 	public void playerJWrite(Player p, JSONObject j) throws JSONException{
 		NodePlayer np = phoneBook.get(p);
-		nc.write(np,  j);
+		np.write(j);
 	}
 	static JSONObject GetGUIObject() throws JSONException{
 		JSONObject jo = new JSONObject();
@@ -140,11 +146,33 @@ public class Instance implements NarratorListener{
 		return jo;
 	}
 	
+	SwitchHandler th;
 	private void startGame(){
 		if(nc != null)
 			nc.instances.remove(this);
     	n._players.sortByName();
+    	
+    	//th is initialized first because if the game is started, a message will be sent out
+    	//instance will not quite be set yet, and throw null pointers
+		th = new SwitchHandler(n, slackPlayers, this);
 		n.startGame();
+		
+
+		th.broadcast("I will accept messages in this channel if they start with a \"-\"");
+	}
+	
+	class SwitchHandler extends TextHandler{
+
+		private Instance inst;
+		public SwitchHandler(Narrator n, PlayerList texters, Instance i) {
+			super(n, texters);
+			this.inst = i;
+		}
+		
+		public void broadcast(String message){
+			inst.broadcastToSlackUsers(message);
+		}
+		
 	}
 	
 	private long timerStart;
@@ -247,10 +275,10 @@ public class Instance implements NarratorListener{
 	
 	void sendGameState(){
 		try{
-			for(Player p: n.getAllPlayers())
+			for(Player p: webUsers)
 				sendGameState(p);
 			JSONObject jo;
-			for(NodePlayer observer: observers){
+			for(WebPlayer observer: observers){
 				jo = sendGameState((Player) null);
 				observer.write(jo);
 			}
@@ -272,7 +300,7 @@ public class Instance implements NarratorListener{
 		StateObject so = getInstObject().addState(StateObject.RULES);
 		so.send(n._players);
 		JSONObject jo = so.send((Player) null);
-		for(NodePlayer observer: observers){
+		for(WebPlayer observer: observers){
 			observer.write(jo);
 		}
 	}
@@ -423,11 +451,11 @@ public class Instance implements NarratorListener{
 	
 	private PlayerList repickers = new PlayerList();
 	private void repickHost(String message){
-		Player potential = n.getAllPlayers().getPlayerByName(message);
+		Player potential = webUsers.getPlayerByName(message);
 		if(potential != null && phoneBook.get(potential).isActive() && message.length() != 0){
 			host = potential;
 		}else{
-			PlayerList options = n.getAllPlayers().remove(host).shuffle(new Random());
+			PlayerList options = webUsers.remove(host).shuffle(new Random());
 			Player oldHost = host;
 			for(Player p: options){
 				if(phoneBook.get(p).isActive()){
@@ -442,7 +470,7 @@ public class Instance implements NarratorListener{
 		repickers.clear();
 	}
 	
-	private void repickRequest(NodePlayer repicker, String message){
+	private void repickRequest(WebPlayer repicker, String message){
 		if(repicker.player == host){
 			repickHost(message);
 		}else{
@@ -456,12 +484,29 @@ public class Instance implements NarratorListener{
 			StringChoice have = new StringChoice("has");
 			have.add(repicker.player, "have");
 			
-			new OGIMessage(n.getAllPlayers(), sc, " ", have, " voted to repick ", sc2, ".");
-			if(repickers.size() >= n.getAllPlayers().size()/2 + 1){
+			new OGIMessage(webUsers, sc, " ", have, " voted to repick ", sc2, ".");
+			if(repickers.size() >= webUsers.size()/2 + 1){
 				repickHost("");
 			}
 		}
 	}
+	boolean slackAdded = false;
+	private void addSlack(String message) throws JSONException{
+		if(slackAdded)
+			return;
+		message = message.toLowerCase();
+		if(!message.equalsIgnoreCase("sdsc") && !message.equalsIgnoreCase("pepband"))
+			return;
+		slackAdded = true;
+		
+		JSONObject jo = new JSONObject();
+		jo.put(StateObject.host, host.getName());
+		jo.put(StateObject.gameID, gameID);
+		jo.put(StateObject.message, "slackAdd");
+		jo.put("slackField", message);
+		nc.serverWrite(jo);
+	}
+	
 	private String translateName(String input){
 		switch(input){
 		case BasicRoles.BUS_DRIVER:
@@ -483,7 +528,7 @@ public class Instance implements NarratorListener{
 		}
 	}
 	
-	public synchronized void handlePlayerMessage(NodePlayer np, JSONObject jo) throws JSONException {
+	public synchronized void handlePlayerMessage(WebPlayer np, JSONObject jo) throws JSONException {
 		String name = jo.getString("name");
     	String message = jo.getString("message");
     	if(message.length() == 0)
@@ -632,6 +677,11 @@ public class Instance implements NarratorListener{
     			}
     			return;
     		}
+    		
+    		if(message.startsWith("say null -slack ")){
+    			addSlack(message.replace("say null -slack ", ""));
+    			return;
+    		}
 		}
 
     	if(message.equals(StateObject.leaveGame)){
@@ -677,25 +727,26 @@ public class Instance implements NarratorListener{
 			sb.append(e.access(p.getName(), true) + "\n");
 		}
 		try {
-			JSONObject jo = NodeCommunicator.getJObject(sb.toString());
+			JSONObject jo = WebCommunicator.getJObject(sb.toString());
 			jo.put("chatReset", true);
-			nc.write(phoneBook.get(p), jo);
+			phoneBook.get(p).write(jo);
+			
 		} catch (JSONException e1) {
 			e1.printStackTrace();
 		}
 	}
 	
 	private void resetChat(){
-		for(Player p: n.getAllPlayers()){
+		for(Player p: webUsers){
 			resetChat(p);
 		}
-		for(NodePlayer observer: observers){
+		for(WebPlayer observer: observers){
 			StringBuilder sb = new StringBuilder();
 			for(Message e: n.getEventManager().getEvents(Message.PUBLIC)){
 				sb.append(e.access(Message.PUBLIC, true) + "\n");
 			}
 			try {
-				JSONObject jo = NodeCommunicator.getJObject(sb.toString());
+				JSONObject jo = WebCommunicator.getJObject(sb.toString());
 				jo.put("chatReset", true);
 				observer.write(jo);
 			} catch (JSONException e1) {
@@ -756,7 +807,7 @@ public class Instance implements NarratorListener{
 		resetChat();
 		broadcast(n.getWinMessage());
 		sendNotification(n.getWinMessage().access(Message.PUBLIC, false));
-    	new OGIMessage(n.getAllPlayers(), "Server : " + "Press refresh to join another game!");
+    	new OGIMessage(webUsers, "Server : " + "Press refresh to join another game!");
     	nc.removeInstance(gameID);
 	}
 	
@@ -780,7 +831,7 @@ public class Instance implements NarratorListener{
 
 	private void sendVotes(Message event){
 		try{
-			for(Player p: n.getAllPlayers()){
+			for(Player p: webUsers){
 				StateObject io = getInstObject();
 				io.addState(StateObject.PLAYERLISTS);
 				io.addKey(StateObject.skipVote, n.Skipper.getVoters().size());
@@ -791,7 +842,7 @@ public class Instance implements NarratorListener{
 			io.addState(StateObject.PLAYERLISTS);
 			io.addKey(StateObject.skipVote, n.Skipper.getVoters().size());
 			io.addKey(StateObject.isSkipping, false);
-			for(NodePlayer observer: observers){
+			for(WebPlayer observer: observers){
 				JSONObject jo = io.send((Player) null);
 				observer.write(jo);
 			}
@@ -836,10 +887,10 @@ public class Instance implements NarratorListener{
 	}
 
 	public void sendNotification(String s){
-		nc.sendNotification(getNodePlayerList(n.getAllPlayers()), "Narrator", s);
+		nc.sendNotification(getWebPlayerList(n.getAllPlayers()), "Narrator", s);
 	}
 	
-	private ArrayList<NodePlayer> getNodePlayerList(PlayerList pl){
+	private ArrayList<NodePlayer> getWebPlayerList(PlayerList pl){
 		ArrayList<NodePlayer> nList = new ArrayList<>();
 		
 		for(Player p: pl){
@@ -871,7 +922,7 @@ public class Instance implements NarratorListener{
 	}
 	public void sendNotification(Player player, String title, String subtitle){
 		NodePlayer np = phoneBook.get(player);
-		if(np.isActive())
+		if(!np.notificationCapable())
 			return;
 		ArrayList<NodePlayer> nList = new ArrayList<>();
 		nList.add(np);
@@ -885,26 +936,32 @@ public class Instance implements NarratorListener{
 
 	
 	public void broadcast(Message m){
-		for(Player p: n.getAllPlayers()){
+		for(Player p: webUsers){
 			p.sendMessage(m);
 		}
+		
+		broadcastToSlackUsers(m.access(Message.PUBLIC, false));
 	}
 	
-	public void announce(JSONObject j1, Player excluded) throws JSONException {
-		for (Player p: n.getAllPlayers()){
-			if(p != excluded)
-				playerJWrite(p, j1);
+	public void broadcastToSlackUsers(String s){
+		JSONObject jo = new JSONObject();
+		try {
+			jo.put("server", true);
+			jo.put(StateObject.message, "slackMessage");
+			jo.put(StateObject.gameID, gameID);
+			jo.put("name", "narrator");
+			jo.put("slackMessage", s);
+		} catch (JSONException e) {
+			e.printStackTrace();
 		}
-		for(NodePlayer np: observers){
-			np.write(j1);
-		}
+		nc.nodePush(jo);
 	}
 
 	public void onPlayerListStatusChange() throws JSONException {
 		StateObject so = getInstObject().addState(StateObject.PLAYERLISTS);
-		so.send(n.getAllPlayers());
+		so.send(webUsers);
 		JSONObject jo = so.send((Player) null);
-		for(NodePlayer np: observers){
+		for(WebPlayer np: observers){
 			np.write(jo);
 		}
 		

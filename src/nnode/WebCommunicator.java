@@ -10,11 +10,11 @@ import shared.packaging.Packager;
 
 
 
-public class NodeCommunicator extends Communicator{
+public class WebCommunicator extends Communicator{
     	
 	NodeSwitch nc;
-	NodePlayer np;
-	public NodeCommunicator(NodeSwitch nc, NodePlayer np){
+	WebPlayer np;
+	public WebCommunicator(NodeSwitch nc, WebPlayer np){
 		this.nc = nc;
 		this.np = np;
 	}
@@ -30,7 +30,7 @@ public class NodeCommunicator extends Communicator{
 		if(nc != null){
 			try{
 				JSONObject j = getJObject(completedMessage);
-				nc.write(np, j);
+				np.write(j);
 			}catch(JSONException e){}
 		}
 	}

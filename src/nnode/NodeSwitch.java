@@ -20,6 +20,7 @@ import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
 import shared.logic.Player;
+import shared.logic.support.Communicator;
 
 public class NodeSwitch{
 	
@@ -30,7 +31,7 @@ public class NodeSwitch{
 	InputStream input;
 	//protected HashMap<String, Instance> phoneBook;
 	public ArrayList<Instance> instances;
-	protected HashMap<String, NodePlayer> phoneBook;
+	protected HashMap<String, WebPlayer> phoneBook;
 	
 
     private static final boolean TEST_MODE = false; 
@@ -145,11 +146,31 @@ public class NodeSwitch{
     
     public void handleMessage(String message) throws JSONException{
     	JSONObject jo = new JSONObject(message);
-		if(jo.has("server") && jo.getBoolean("server")){
+    	if(jo.has("slack") && jo.getBoolean("slack")){
+    		handleSlackMessage(jo);
+    	}else if(jo.has("server") && jo.getBoolean("server")){
 			handleServerMessage(jo);
 		}else{
 			handlePlayerMessage(jo);
 		}
+    }
+    
+    private void handleSlackMessage(JSONObject jo) throws JSONException{
+    	Instance i = idToInstance.get(jo.get("instanceID"));
+    	switch (jo.getString(StateObject.message)){
+    		case "addPlayer":
+    			String name = jo.getString("slackName");
+    			SlackPlayer sp = new SlackPlayer(name, this);
+    			Communicator c = new SlackCommunicator(sp); 
+    	    	sp.joinGame(i, c);
+    			break;
+    		case "slackUserInput":
+    			sp = i.slackMap.get(jo.getString("from"));
+    			i.th.text(sp.player, jo.getString("slackMessage"), false);
+    			break;
+    	}
+    	
+    	
     }
     
     public Instance getInstance(String name){
@@ -215,23 +236,23 @@ public class NodeSwitch{
 		jo.put("lobbyUpdate", true);
 		
 		JSONArray gLobbyPlayers = new JSONArray();
-		for(NodePlayer np: lobbyList){
+		for(WebPlayer np: lobbyList){
 			gLobbyPlayers.put(np.name);
 		}
 		jo.put("playerList", gLobbyPlayers);
-		for(NodePlayer np: lobbyList){
+		for(WebPlayer np: lobbyList){
 			np.write(jo);
 		}
     }
     
-    private NodePlayer addNodePlayer(String name) throws JSONException{
-    	NodePlayer np = new NodePlayer(name, this); 
+    private WebPlayer addNodePlayer(String name) throws JSONException{
+    	WebPlayer np = new WebPlayer(name, this); 
 		phoneBook.put(name, np);
     	
     	return np;
     }
     
-    public void joinLobby(NodePlayer np) throws JSONException {
+    public void joinLobby(WebPlayer np) throws JSONException {
 		lobbyList.add(np);
 		onLobbyListChange();
 
@@ -245,12 +266,12 @@ public class NodeSwitch{
 		jo.remove("server");
 		jo.put("reset", true);
 		jo.put("sever", false);
-		write(np, jo);
+		np.write(jo);
 	}
     
     public void handleServerMessage(JSONObject jo) throws JSONException{
 		String name = jo.getString("name");
-		NodePlayer np = phoneBook.get(name);
+		WebPlayer np = phoneBook.get(name);
 		if(np == null){
 			np = addNodePlayer(name);
 		}
@@ -284,51 +305,52 @@ public class NodeSwitch{
     	}
     }
     
-    private void removePlayerFromLobby(NodePlayer np) throws JSONException{
+    private void removePlayerFromLobby(WebPlayer np) throws JSONException{
 		lobbyList.remove(np);
 		onLobbyListChange();
     }
     
     private ArrayList<LobbyMessage> lobbyMessages;
-    protected ArrayList<NodePlayer> lobbyList;
+    protected ArrayList<WebPlayer> lobbyList;
 	public SwitchListener switchListener;
-    private void addMessage(NodePlayer nPlayer, String message) throws JSONException{
+    private void addMessage(WebPlayer nPlayer, String message) throws JSONException{
     	
     	LobbyMessage messageToPush = new LobbyMessage(nPlayer, message);
     	lobbyMessages.add(messageToPush);
     	if(lobbyMessages.size() > 100)
     		lobbyMessages.remove(0);
     	JSONObject jo;
-    	for(NodePlayer np: lobbyList){
+    	for(WebPlayer np: lobbyList){
     		jo = new JSONObject();
     		JSONArray jArray = new JSONArray();
     		jArray.put(messageToPush.access(np));
     		jo.put("message", jArray);
     		jo.put("lobbyUpdate", true);
-    		write(np, jo);
+    		np.write(jo);
     	}
     }
     public void handlePlayerMessage(JSONObject jo) throws JSONException{
     	String name = jo.getString("name");
-    	NodePlayer np = phoneBook.get(name);
+    	WebPlayer np = phoneBook.get(name);
     	Instance i = np.inst;
     	if(i == null){
+        	Communicator c = new WebCommunicator(this, np);
     		String message = jo.getString("message");
     		if(jo.has("action") && jo.getBoolean("action")){
     			if(message.equals("joinPublic")){
     				removePlayerFromLobby(np);
     				i = getInstance();
-    				np.joinGame(i);
+    				np.joinGame(i, c);
     			}else if(message.equals("hostPublic")){
     				removePlayerFromLobby(np);
     				i = new Instance(this);
     				instances.add(i);
-    				np.joinGame(i);
+    				np.joinGame(i, c);
     			}else if(message.equals("joinPrivate")){
     				i = getInstance(jo.getString("hostName"));
     				if(i != null){
         				removePlayerFromLobby(np);
-    					np.joinGame(i);
+    					np.joinGame(i, c);
     				}else{
     					i = idToInstance.get(jo.getString("hostName").toUpperCase());
     					if(i != null){ // observer mode
@@ -346,14 +368,10 @@ public class NodeSwitch{
     }
     
     public void write(String name, JSONObject jo) throws JSONException{
-    	write(phoneBook.get(name), jo);
+    	phoneBook.get(name).write(jo);
     }
-    public void write(NodePlayer np, JSONObject jo) throws JSONException{
-    	jo.put("name", np.name);
-    	//System.out.println("(java -> heroku): " + s + "\n");
-    	nodePush(jo);
-    }
-    private void serverWrite(JSONObject jo){
+
+    void serverWrite(JSONObject jo){
 		try {
 			jo.put("server", true);
 		} catch (JSONException e) {
@@ -362,7 +380,7 @@ public class NodeSwitch{
 		nodePush(jo);
 	}
     
-    private void nodePush(JSONObject jo){
+    void nodePush(JSONObject jo){
     	String s = jo.toString();
     	if(writer != null){
     		writer.println(s + "$$");
@@ -382,13 +400,13 @@ public class NodeSwitch{
 		public void onSwitchMessage(String s);
 	}
 
-	public void sendNotification(ArrayList<NodePlayer> nList, String title, String subtitle) {
+	public void sendNotification(ArrayList<NodePlayer> arrayList, String title, String subtitle) {
 		JSONObject jo = new JSONObject();
 		try {
 			jo.put(StateObject.message, "sendNotification");
 			JSONArray jRecipients = new JSONArray();
-			for(NodePlayer np: nList){
-				if(!np.isActive())
+			for(NodePlayer np: arrayList){
+				if(np.notificationCapable())
 					jRecipients.put(np.name);
 				//else
 					//System.out.println(np.name + " is active so, won't be sending something to him");

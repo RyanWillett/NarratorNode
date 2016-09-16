@@ -3,9 +3,13 @@ var fs    = require('fs');
 var gcm   = require('node-gcm');
 var mysql = require('mysql');
 var keys  = require('./keys');
+var slackAPI = require('slackbotapi');
 const NARRATOR = "Narrator";
+const MAFIA_CHANNEL_NAME = 'narrator_mafia';
 const READ_JAVA_OUTPUT = true;
 const LOG_CLIENT_OUTPUT = false;
+
+var STARTERS = ['c1mckay', 'michaelcmkay', 'euromkay', 'charles', 'Voss'];
 
 /*firebase.initializeApp({
   serviceAccount: "Narrator-1c6d40c23a30.json",
@@ -19,18 +23,25 @@ var db_connection = mysql.createConnection({
   user     : keys.databaseUser,
 });
 
+
 db_connection.connect(function(err) {
   if(err === null){
     console.log('Database connection success!\n\tUsing \'Users\' table');
     db_connection.query('use narrator');
   }else
-    if(err.code !=='ER_ACCESS_DENIED_ERROR' || !keys.runningLocally)
+    if(keys.runningLocally){
+      if(err.code !== 'ER_ACCESS_DENIED_ERROR' && err.code !== 'ECONNREFUSED'){
+        console.log(err);
+      }else{
+        console.log("No connection to database, because this is a local session.");
+        db_connection = null;
+      }
+    }else{
       console.log(err);
-    else{
-      console.log("No connection to database, because this is a local session.");
-      db_connection = null;
     }
 });
+
+
 
 function query(query, fini){
   if(db_connection === null)
@@ -143,6 +154,14 @@ function pipe_Jwrite(o){
   return pipe_write(JSON.stringify(o));
 }
 
+function toJava(o){
+  if(pipe === null || pipe === undefined)
+    return;
+
+  //console.log(o);
+  pipe.write(JSON.stringify(o) + "\n");
+}
+
 function pipe_write(m){
   if(pipe !== null){
     pipe.write(m + '\n');
@@ -235,7 +254,7 @@ function handle_java_event(jo){
       delete connections_mapping[name];
     }
   }
-  if (jo.message === "sendNotification"){
+  else if (jo.message === "sendNotification"){
     var title = jo.title;
     var subtitle = jo.subtitle;
     var users = jo.recipients;
@@ -259,10 +278,216 @@ function handle_java_event(jo){
     }
     queryString += "')";
     query(queryString, fini);
+  }else if(jo.message === 'slackAdd'){
+    if(STARTERS.indexOf(jo.host) === -1)
+      return;
+
+    var apiToken;
+    if(jo.slackField === 'sdsc'){
+      apiToken = keys.sdscToken;
+    }else if(jo.slackField === 'pepband'){
+      apiToken = keys.pepbandToken;
+    }else{
+      apiToken = keys.myToken;
+    }
+
+    apiToken = keys.myToken;
+    initializeSlackBot(apiToken, jo.gameID);
+
+  }else if(jo.message === 'slackMessage'){
+    queueSlackMessage(jo);
   }
+}
+var slackBots = {};
+
+function initializeSlackBot(apiToken, instanceID){
+  var slackBot = new slackAPI({
+    'token': apiToken,
+    'logging': false,
+    'autoReconnect': true
+  });
+
+  var slackInstance = slackBots[instanceID] = {}
+  slackInstance.messages = [];
+  slackBots[instanceID].bot = slackBot;
+
+  function sendSlackMessage(){
+    var remove = true;
+    if(slackInstance.messages.length != 0){
+      var message = slackInstance.messages[0];
+      console.log(message);
+      try{
+        if(message.recipient !== "narrator"){
+          slackBot.sendPM(message.recipient, message.message);
+        }else{
+          if(!slackInstance.channelID){
+            findChannel(slackInstance);
+            console.log('finding channel');
+            remove = false;
+          }else{
+            slackBot.sendMsg(slackInstance.channelID, message.message);  
+          }
+          
+        }   
+        if(remove)
+          slackInstance.messages.splice(0, 1); //removes the first element     
+      }catch(err){
+        console.log(err);
+      }
+    }else{
+      
+    }
+
+    setTimeout(sendSlackMessage, 1000);
+  }
+  sendSlackMessage();
+
+  collectUsers(apiToken, instanceID);
+  findChannel(slackInstance);
+
+  slackBot.on('message', function (data) {
+    if (typeof data.text === 'undefined')
+      return;
+
+    var message = data.text;
+    var channel = data.channel;
+
+    if(data.subtype){ //someone just left or got added
+      if(data.subtype === 'group_join'){
+        addSlackUser();
+      }else if(data.subtype){
+        removeSlackUser();
+      }
+      return;
+    }
+
+    if(data.user === null)
+      return;
+    var user = slackBot.getUser(data.user);
+    if(user.is_bot)
+      return;
+    if(!slackInstance.channelID)
+      findChannel(slackInstance);
+    if(slackInstance.channelID === data.channel){
+      if(message.length === 0)
+        return;
+      if(message[0] !== '-')
+        return;
+      message = message.substring(1);
+    }
+    var o = {};
+    o.slack = true;
+    o.message = 'slackUserInput';
+    o.slackMessage = message;
+    o.from = slackInstance.tables.userToFirstName[user.name];
+    o.instanceID = instanceID;
+    toJava(o);
+  });
+}
+
+function findChannel(slackInstance){
+  var slackBot = slackInstance.bot;
+  var groups = slackBot.slackData.groups;
+  if(groups === undefined){
+    "groups is still undefined";
+    return;
+  }
+  for(var i = 0; i < groups.length; i++){
+    if(groups[i].name === MAFIA_CHANNEL_NAME){
+      slackInstance.channelID = groups[i].id;
+      return;
+    }
+  }
+  console.log("didn't find the channel");
 }
 
 
+
+function collectUsers(apiToken, instanceID){
+  var slackBotObject = slackBots[instanceID];
+  var slackTable = slackBotObject.tables = {}
+  slackTable.firstNameToUser = {};
+  slackTable.userToFirstName = {};
+  
+  var slackRequire = require('slack-node')
+  slack = new slackRequire(apiToken);
+
+  slack.api('groups.list', {
+  }, function(err, response){
+    for(var i = 0; i < response.groups.length; i++){
+      if(response.groups[i].name === MAFIA_CHANNEL_NAME)
+        getUsers(response.groups[i].id);
+    }
+  });
+
+  var num = 0;
+
+  function getUsers(id){
+    slack.api('groups.info', {
+      channel: id
+    },function(err, response){
+      var members = response.group.members;
+      num = members.length;
+      for(var i = 0; i < members.length; i++){
+        getUserName(members[i]);
+      }
+    });
+  }
+
+  users = [];
+
+  function getUserName(id){
+    slack.api('users.info', {
+      user: id
+    },function(err, response){
+      var user = response.user;
+      if(user.is_bot)
+        return;
+      var name;
+      if(user.profile['first_name'])
+        name = user.profile['first_name'];
+      else
+        name = user.name;
+      users.push(name);
+
+      slackTable.firstNameToUser[name] = user.name;
+      slackTable.userToFirstName[user.name] = name;
+
+      addSlackUser(name, instanceID);
+
+    });
+  }
+}
+
+function addSlackUser(name, instanceID){
+  var o = {};
+  o.slack = true;
+  o.instanceID = instanceID;
+  o.message = 'addPlayer';
+  o.slackName = name;
+  toJava(o);
+}
+
+function queueSlackMessage(jo){
+  var slackBotObject = slackBots[jo.gameID];
+  if(slackBotObject === undefined)
+    return;
+  var slackBot = slackBotObject.bot;
+
+  var message = jo.slackMessage;
+  var name;
+  if(jo.name !== 'narrator'){
+    name = slackBotObject.tables.firstNameToUser[jo.name]; 
+  }else{
+    name = 'narrator';
+  }
+
+  var o = {};
+  o.recipient = name;
+  o.message = message;
+  slackBotObject.messages.push(o);
+  console.log(o);
+}
 
 var junk = "";
 

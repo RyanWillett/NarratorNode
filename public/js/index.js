@@ -23,7 +23,7 @@ gameState.commandsIndex = 0;
 gameState.isOver = false;
 gameState.timer = -2;
 gameState.isAlive = true;
-gameState.isObserver = true;
+gameState.isObserver = false;
 
 gameState.editingAllies = false;
 gameState.editingRoles = false;

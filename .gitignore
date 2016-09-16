@@ -2,9 +2,11 @@ src/android/*
 src/shared/*
 src/*.txt
 *.class
-keys.js
+keys.json
 slack2.js
 slacktest.js
 src/nnode/test.java
 src/nnode/SlackTest.java
 node_modules/
+src/nnode/SlackSwitch.java
+src/nnode/SlackTest.java

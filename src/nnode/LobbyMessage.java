@@ -3,13 +3,13 @@ package nnode;
 public class LobbyMessage {
 
 	
-	protected NodePlayer sender;
+	protected WebPlayer sender;
 	protected String message;
-	public LobbyMessage(NodePlayer np, String message) {
+	public LobbyMessage(WebPlayer np, String message) {
 		this.sender = np;
 		this.message = message;
 	}
-	public String access(NodePlayer accessor) {
+	public String access(WebPlayer accessor) {
 		StringBuilder sb = new StringBuilder();
     	sb.append("<b>");
 		if(accessor.equals(sender))
