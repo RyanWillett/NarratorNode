@@ -196,6 +196,16 @@ public class NodeSwitch{
     }
     public void removeInstance(String id){
     	idToInstance.remove(id);
+    	
+    	JSONObject jo = new JSONObject();
+    	try {
+			jo.put(StateObject.message, "slackKill");
+	    	jo.put(StateObject.gameID, id);
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+    	
+    	serverWrite(jo);
     }
     public String getID(){
     	int id = r.nextInt(456976) + 1;

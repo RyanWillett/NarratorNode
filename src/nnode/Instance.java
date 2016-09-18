@@ -15,6 +15,7 @@ import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
 import shared.event.ChatMessage;
+import shared.event.EventList;
 import shared.event.Message;
 import shared.event.OGIMessage;
 import shared.logic.Member;
@@ -754,7 +755,7 @@ public class Instance implements NarratorListener{
 			}
 		}
 	}
-	public void onNightStart(PlayerList lynched) {
+	public void onNightStart(PlayerList lynched, PlayerList poisoned, EventList e) {
 		startTimer();
 		sendGameState();
 		resetChat();
@@ -805,7 +806,7 @@ public class Instance implements NarratorListener{
 		timer.interrupt();
 		sendGameState();
 		resetChat();
-		broadcast(n.getWinMessage());
+		broadcast(n.getWinMessage(), false);
 		sendNotification(n.getWinMessage().access(Message.PUBLIC, false));
     	new OGIMessage(webUsers, "Server : " + "Press refresh to join another game!");
     	nc.removeInstance(gameID);
@@ -813,7 +814,7 @@ public class Instance implements NarratorListener{
 	
 	public void onMayorReveal(Player mayor, Message e) {
 		sendVotes(null);
-		broadcast(e);
+		broadcast(e, false);
 		sendNotification(mayor.getDescription() + " has revealed as the mayor!");
 	}
 
@@ -849,7 +850,7 @@ public class Instance implements NarratorListener{
 		}catch(JSONException e){}
 
 		if(event != null){
-			broadcast(event);
+			broadcast(event, false);
 			sendNotification(event);
 		}
 	}
@@ -933,14 +934,14 @@ public class Instance implements NarratorListener{
 		resetChat();
 		
 	}
-
 	
-	public void broadcast(Message m){
+	public void broadcast(Message m, boolean toSlack){
 		for(Player p: webUsers){
 			p.sendMessage(m);
 		}
 		
-		broadcastToSlackUsers(m.access(Message.PUBLIC, false));
+		if(toSlack)
+			broadcastToSlackUsers(m.access(Message.PUBLIC, false));
 	}
 	
 	public void broadcastToSlackUsers(String s){

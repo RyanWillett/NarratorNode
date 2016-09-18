@@ -291,11 +291,19 @@ function handle_java_event(jo){
       apiToken = keys.myToken;
     }
 
-    apiToken = keys.myToken;
+    //apiToken = keys.myToken;
     initializeSlackBot(apiToken, jo.gameID);
 
   }else if(jo.message === 'slackMessage'){
     queueSlackMessage(jo);
+  }else if(jo.message === 'slackKill'){
+    var slackInstance = slackBots[jo.gameID];
+    if(!slackInstance)
+      return;
+    slackBots[jo.gameID] = null;
+    slackInstance.bot.autoReconnect = false;
+    slackInstance.bot.ws.close();
+    slackInstance.active = false;
   }
 }
 var slackBots = {};
@@ -308,6 +316,8 @@ function initializeSlackBot(apiToken, instanceID){
   });
 
   var slackInstance = slackBots[instanceID] = {}
+  slackInstance.instanceID = instanceID;
+  slackInstance.active = true;
   slackInstance.messages = [];
   slackBots[instanceID].bot = slackBot;
 
@@ -315,14 +325,12 @@ function initializeSlackBot(apiToken, instanceID){
     var remove = true;
     if(slackInstance.messages.length != 0){
       var message = slackInstance.messages[0];
-      console.log(message);
       try{
         if(message.recipient !== "narrator"){
           slackBot.sendPM(message.recipient, message.message);
         }else{
           if(!slackInstance.channelID){
             findChannel(slackInstance);
-            console.log('finding channel');
             remove = false;
           }else{
             slackBot.sendMsg(slackInstance.channelID, message.message);  
@@ -338,7 +346,8 @@ function initializeSlackBot(apiToken, instanceID){
       
     }
 
-    setTimeout(sendSlackMessage, 1000);
+    if(slackInstance.active)
+      setTimeout(sendSlackMessage, 1000);
   }
   sendSlackMessage();
 
@@ -470,7 +479,7 @@ function addSlackUser(name, instanceID){
 
 function queueSlackMessage(jo){
   var slackBotObject = slackBots[jo.gameID];
-  if(slackBotObject === undefined)
+  if(!slackBotObject)
     return;
   var slackBot = slackBotObject.bot;
 
