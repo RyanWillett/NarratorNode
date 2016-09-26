@@ -629,10 +629,13 @@ function showButton(bool){
 			button.text('Exit Game');
 		}
 		else if(gameState.isDay){
-			if(gameState.role.roleName === 'Mayor'){
+			var roleName = gameState.role.roleName;
+			if(roleName === 'Mayor'){
 				button.text('Reveal');
-			}else{
+			}else if(roleName === 'Arsonist'){
 				button.text('Burn');
+			}else{
+				button.text('Assassinate');
 			}
 		}else{
 			$('.radios').prop('disabled', gameState.endedNight || gameState.isDay);

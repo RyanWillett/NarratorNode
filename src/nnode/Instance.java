@@ -159,7 +159,7 @@ public class Instance implements NarratorListener{
 		n.startGame();
 		
 
-		th.broadcast("I will accept messages in this channel if they start with a \"-\"");
+		th.broadcast("I will accept messages in this channel if they start with a \"!\"");
 	}
 	
 	class SwitchHandler extends TextHandler{
@@ -193,7 +193,9 @@ public class Instance implements NarratorListener{
 			public void run() {
 				try {
 					int length = n.isDay() ? n.getRules().getInt(Rules.DAY_LENGTH) : n.getRules().getInt(Rules.NIGHT_LENGTH);
-					Thread.sleep(60000 * length);
+					Thread.sleep((60000 * length) - 30000);
+					broadcastToSlackUsers( "30 seconds left!");
+					Thread.sleep(30000);
 				} catch (InterruptedException e) {
 					return;
 				}
@@ -496,7 +498,7 @@ public class Instance implements NarratorListener{
 		if(slackAdded)
 			return;
 		message = message.toLowerCase();
-		if(!message.equalsIgnoreCase("sdsc") && !message.equalsIgnoreCase("pepband"))
+		if(!message.equalsIgnoreCase("sdsc") && !message.equalsIgnoreCase("pepband") && !message.equalsIgnoreCase("thenarrator"))
 			return;
 		slackAdded = true;
 		
@@ -806,7 +808,7 @@ public class Instance implements NarratorListener{
 		timer.interrupt();
 		sendGameState();
 		resetChat();
-		broadcast(n.getWinMessage(), false);
+		broadcast(n.getWinMessage(), true);
 		sendNotification(n.getWinMessage().access(Message.PUBLIC, false));
     	new OGIMessage(webUsers, "Server : " + "Press refresh to join another game!");
     	nc.removeInstance(gameID);

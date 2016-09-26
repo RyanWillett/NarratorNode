@@ -9,7 +9,7 @@ const MAFIA_CHANNEL_NAME = 'narrator_mafia';
 const READ_JAVA_OUTPUT = true;
 const LOG_CLIENT_OUTPUT = false;
 
-var STARTERS = ['c1mckay', 'michaelcmkay', 'euromkay', 'charles', 'Voss'];
+var STARTERS = ['c1mckay', 'michaelcmkay', 'euromkay', 'charles', 'Voss', 'voss_guy'];
 
 /*firebase.initializeApp({
   serviceAccount: "Narrator-1c6d40c23a30.json",
@@ -126,20 +126,13 @@ var wss = new WebSocketServer({server: server});
 console.log("Websocket server created...");
 
 
-/*function web_send_all(message){
-  console.log('sending global web message ' + message);
-  var key;
-  for (key in connections_mapping){
-    connections_mapping[key].send(message);
-  }
-}*/
+
 
 
 function web_send(name, message){
   if(LOG_CLIENT_OUTPUT)
     console.log('sending web message to ' + name + " : " + message);
   var c = connections_mapping[name];
-  //console.log(connections_mapping.length);
   if (c!== undefined && c !== null)
     c.send(message, function ack(error){
       if(error === undefined || error === null)
@@ -154,18 +147,11 @@ function pipe_Jwrite(o){
   return pipe_write(JSON.stringify(o));
 }
 
-function toJava(o){
-  if(pipe === null || pipe === undefined)
-    return;
-
-  //console.log(o);
-  pipe.write(JSON.stringify(o) + "\n");
-}
-
+//toJava
 function pipe_write(m){
-  if(pipe !== null){
-    pipe.write(m + '\n');
-    //console.log('(heroku -> java) "' + m + '"');
+  if(java){
+    m = m.replace("$$", "") + '\n';
+    java.stdin.write(m);
     return true;
   }
   console.log('pipe is null');
@@ -300,10 +286,8 @@ function handle_java_event(jo){
     var slackInstance = slackBots[jo.gameID];
     if(!slackInstance)
       return;
-    slackBots[jo.gameID] = null;
-    slackInstance.bot.autoReconnect = false;
-    slackInstance.bot.ws.close();
     slackInstance.active = false;
+    slackBots[jo.gameID] = null;
   }
 }
 var slackBots = {};
@@ -346,8 +330,12 @@ function initializeSlackBot(apiToken, instanceID){
       
     }
 
-    if(slackInstance.active)
+    if(slackInstance.active || slackInstance.messages.length != 0)
       setTimeout(sendSlackMessage, 1000);
+    else{
+      slackInstance.bot.autoReconnect = false;
+      slackInstance.bot.ws.close();
+    }
   }
   sendSlackMessage();
 
@@ -365,7 +353,7 @@ function initializeSlackBot(apiToken, instanceID){
       if(data.subtype === 'group_join'){
         addSlackUser();
       }else if(data.subtype){
-        removeSlackUser();
+        //removeSlackUser();
       }
       return;
     }
@@ -380,17 +368,19 @@ function initializeSlackBot(apiToken, instanceID){
     if(slackInstance.channelID === data.channel){
       if(message.length === 0)
         return;
-      if(message[0] !== '-')
+      if(message[0] !== '!')
         return;
       message = message.substring(1);
     }
+    if(message[0] === '!')
+      message = message.substring(1); 
     var o = {};
     o.slack = true;
     o.message = 'slackUserInput';
     o.slackMessage = message;
     o.from = slackInstance.tables.userToFirstName[user.name];
     o.instanceID = instanceID;
-    toJava(o);
+    pipe_Jwrite(o);
   });
 }
 
@@ -418,14 +408,18 @@ function collectUsers(apiToken, instanceID){
   slackTable.firstNameToUser = {};
   slackTable.userToFirstName = {};
   
-  var slackRequire = require('slack-node')
+  var slackRequire = require('slack-node');
   slack = new slackRequire(apiToken);
 
   slack.api('groups.list', {
   }, function(err, response){
-    for(var i = 0; i < response.groups.length; i++){
-      if(response.groups[i].name === MAFIA_CHANNEL_NAME)
-        getUsers(response.groups[i].id);
+    if(err){
+      console.log(err);
+    }else{
+      for(var i = 0; i < response.groups.length; i++){
+        if(response.groups[i].name === MAFIA_CHANNEL_NAME)
+          getUsers(response.groups[i].id);
+      }
     }
   });
 
@@ -474,7 +468,7 @@ function addSlackUser(name, instanceID){
   o.instanceID = instanceID;
   o.message = 'addPlayer';
   o.slackName = name;
-  toJava(o);
+  pipe_Jwrite(o);
 }
 
 function queueSlackMessage(jo){
@@ -495,7 +489,6 @@ function queueSlackMessage(jo){
   o.recipient = name;
   o.message = message;
   slackBotObject.messages.push(o);
-  console.log(o);
 }
 
 var junk = "";
@@ -509,10 +502,9 @@ function receiver(data) {
   while(-1 != (index = junk.indexOf("$$"))){
     completed = junk.substring(0, index);
     junk = junk.substring(index + 2, junk.length);
-    
-    //console.log('java -> heroku : ' + completed);
 
     var jo = JSON.parse(completed);
+    
     if(jo.server)
       handle_java_event(jo);
     else
@@ -522,39 +514,24 @@ function receiver(data) {
 }
 
 
-function connectClient(){
-  var net = require('net');
-  var client_o = new net.Socket();
-  client_o.connect(1337, '127.0.0.1', function() {
-    console.log('Connected');
-    pipe = client_o;
-  });
 
-  client_o.on('data', function(data) {
-    receiver(data);
-  });
 
-  client_o.on('close', function() {
-    console.log('Connection closed');
-  });
-}
-
+var java;
 function runJava(){
-  console.log('Starting java process...');
-  setTimeout(connectClient, 3000);
-  var spawn = require('child_process').spawn
+  console.log('Starting NodeSwitch process...');
+  //setTimeout(connectClient, 3000);
+  var spawn = require('child_process').spawn;
   java = spawn("java", ["nnode/NodeSwitch"], {cwd: 'src'});
+  java.stdin.setEncoding('utf-8');
   java.stdout.on('data', function(data){
-    //console.log('(java) : ' + data);
-    if(READ_JAVA_OUTPUT)
-      console.log(data.toString());
+    receiver(data);
   });
   java.stderr.on('data', function(data){
     console.log('(javaErr) : ' + data);
   });
   java.on('exit', function (code) {
     console.log('child process exited with code ' + code);
-});
+  });
 }
 
 

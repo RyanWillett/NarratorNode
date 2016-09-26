@@ -2,10 +2,6 @@ package nnode;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -19,16 +15,13 @@ import android.texting.TextHandler;
 import json.JSONArray;
 import json.JSONException;
 import json.JSONObject;
+import shared.event.OGIMessage;
 import shared.logic.Player;
 import shared.logic.support.Communicator;
 
 public class NodeSwitch{
 	
-	ServerSocket server;
-	Socket socket;
-	PrintWriter writer;
 	TextHandler th;
-	InputStream input;
 	//protected HashMap<String, Instance> phoneBook;
 	public ArrayList<Instance> instances;
 	protected HashMap<String, WebPlayer> phoneBook;
@@ -42,13 +35,7 @@ public class NodeSwitch{
     	new NodeSwitch().start();
     }
     
-    private void setupSocket() throws IOException{
-    	server = new ServerSocket(1337);
-    	socket = server.accept();
-    	input = socket.getInputStream();
-    	writer = new PrintWriter(socket.getOutputStream(),false);
-    	
-    }
+    
     private void setupLogger() throws IOException{
     	if(TEST_MODE){
     		String path = "C:\\Users\\Michael\\Desktop\\HerokuTest\\node-ws-test\\src\\";
@@ -96,9 +83,6 @@ public class NodeSwitch{
     
     @SuppressWarnings("unused")
 	public void start()throws IOException, JSONException{
-    	System.out.print("java starting");
-    	if(!TEST_MODE)
-    		setupSocket();
     	setupLogger();
     	
     	
@@ -107,7 +91,7 @@ public class NodeSwitch{
     	if(TEST_MODE){
     		scan = new Scanner(file);
     	}else{
-            scan = new Scanner( input );
+            scan = new Scanner(System.in);
     	}
         
         
@@ -115,6 +99,7 @@ public class NodeSwitch{
         while ((!TEST_MODE || scan.hasNextLine()) ) {
         	
         	String message = scan.nextLine().replace("\n", "");
+        	
         	try{
         		
         		//addToLog(message);
@@ -133,15 +118,10 @@ public class NodeSwitch{
         	}
 
         }
-        System.out.println("java ending");
+        System.err.println("java ending");
         if(in != null)
         	in.close();
         scan.close();
-        if(writer != null){
-        	writer.close();
-        	socket.close();
-        	server.close();
-        }
     }
     
     public void handleMessage(String message) throws JSONException{
@@ -153,6 +133,7 @@ public class NodeSwitch{
 		}else{
 			handlePlayerMessage(jo);
 		}
+    	//System.err.print(message);
     }
     
     private void handleSlackMessage(JSONObject jo) throws JSONException{
@@ -166,7 +147,12 @@ public class NodeSwitch{
     			break;
     		case "slackUserInput":
     			sp = i.slackMap.get(jo.getString("from"));
-    			i.th.text(sp.player, jo.getString("slackMessage"), false);
+    			try{
+    				i.th.text(sp.player, jo.getString("slackMessage"), false);
+    			}catch(Throwable t){
+    				t.printStackTrace();
+    				new OGIMessage(sp.player, "Something funny happened. Please tell me what you typed to cause this.");
+    			}
     			break;
     	}
     	
@@ -392,11 +378,11 @@ public class NodeSwitch{
     
     void nodePush(JSONObject jo){
     	String s = jo.toString();
-    	if(writer != null){
-    		writer.println(s + "$$");
-    		writer.flush();
-    	}else if(switchListener != null){
+		//System.err.println(s);
+    	if(switchListener != null){
     		switchListener.onSwitchMessage(s);
+    	}else{
+    		System.out.println(s + "$$");
     	}
     }
     
