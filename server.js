@@ -4,6 +4,7 @@ var gcm   = require('node-gcm');
 var mysql = require('mysql');
 var keys  = require('./keys');
 var slackAPI = require('slackbotapi');
+var firebase = require('firebase');
 const NARRATOR = "Narrator";
 const MAFIA_CHANNEL_NAME = 'narrator_mafia';
 const READ_JAVA_OUTPUT = true;
@@ -11,10 +12,10 @@ const LOG_CLIENT_OUTPUT = false;
 
 var STARTERS = ['c1mckay', 'michaelcmkay', 'euromkay', 'charles', 'Voss', 'voss_guy'];
 
-/*firebase.initializeApp({
+firebase.initializeApp({
   serviceAccount: "Narrator-1c6d40c23a30.json",
   databaseURL: "https://narrator-119be.firebaseio.com"
-});*/
+});
 
 var androidNotifier = new gcm.Sender(keys.androidNotifToken);
 
@@ -165,34 +166,76 @@ function toJString(name, message){
   return JSON.stringify(o);
 }
 
-connections_mapping = {};
+function checkSessionToken(o, ws, done){
+  if(!o || !o.sessionID){
+    console.log('closing connection 171');
+    ws.close();
+    return;
+  }
+
+
+  firebase.auth().verifyIdToken(o.sessionID).then(function(decodedToken){
+    console.log('VALID TOKEN!');
+    var name = decodedToken.name;
+    var priorMapping = connections_mapping[name];
+    if(priorMapping){
+      console.log('closing connection 182');
+      priorMapping.close();
+    }
+    connections_mapping[name] = ws;
+    done(name);
+  }).catch(function (error){
+    console.log(error);
+    ws.close();
+  });
+}
+
+var connections_mapping = {};
 
 wss.on("connection", function(ws) {
   var o = toJString(NARRATOR, "You are now connected!");
   ws.send(o);
 
+  var name;
+  var unvalidated_messages = [];
+  var validated = false;
+  var validating = false;
+
   ws.on('message', function(message){
     //console.log('web -> heroku : ' + message);
     try{
       o = JSON.parse(message);
-
-      if(o.name === null || o.name === undefined){
+      console.log(o);
+      if(!o.name){
         o.name = generateName();
         message = JSON.stringify(o);
         o = JSON.parse(message);
       }
-      if(o.token !== undefined && o.token !== null){
-        console.log('saving notification id');
-        saveAndroidToken(o.name, o.token);
-      }
-      if(connections_mapping[o.name] != ws && connections_mapping[o.name] !== undefined){
-        connections_mapping[o.name].close();
-      }
-      connections_mapping[o.name] = ws;
 
-      if(o.message.length !== 0){
-        pipe_write(message);
+      if(!validated){
+        if(validating){
+          console.log('pushing message');
+          unvalidated_messages.push(o);
+          return;
+        }
+        if(!o.sessionID){  //if no notion of who you are, disconnect
+          console.log('closing connection 221');
+          ws.close();
+        }
+        unvalidated_messages.push(o);
+        validating = true;
+        checkSessionToken(o, ws, function(name_for_token){
+          name = name_for_token;
+          validated = true;
+          console.log('was valiated');
+          for(var i = 0; i < unvalidated_messages.length; i++){
+           cleanMessage(o, name_for_token, JSON.stringify(o));
+          }
+        });
+        return;
       }
+      cleanMessage(o, name, message);
+      
     }catch(myErrorMessage){
       console.log(myErrorMessage);
     }
@@ -218,6 +261,21 @@ wss.on("connection", function(ws) {
   });
 })
 
+function cleanMessage(o, name, message){
+  if(o.name !== name){
+    o.name = name_for_token;
+    message = JSON.stringify(o);
+  }
+  if(o.token){
+    console.log('saving notification id');
+    saveAndroidToken(o.name, o.token);
+  }
+  if(o.message.length !== 0){
+    console.log(o);
+    pipe_write(message);
+  }
+}
+
 function saveAndroidToken(name, tokenID){
   var queryString = "insert into users (username, android_id) values('" + name;
   queryString += "', '" + tokenID + "') on duplicate key update android_id = '";
@@ -236,6 +294,7 @@ function handle_java_event(jo){
     var name;
     for (var i = 0; i < jo.players.length; i++){
       name = jo.players[i];
+      console.log('closing connection 292');
       connections_mapping[name].close();
       delete connections_mapping[name];
     }

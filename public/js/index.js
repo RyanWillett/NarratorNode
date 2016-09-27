@@ -997,10 +997,16 @@ function host_submit(){
 }
 
 function greetServer(){
-	var o = {}
-	o.message = "greeting";
-	o.server = true;
-	web_send(o);
+	
+	firebase.auth().currentUser.getToken(/* forceRefresh */ true).then(function(idToken) {
+		var o = {}
+		o.message = "greeting";
+		o.server = true;
+		o.sessionID = idToken;
+		web_send(o);
+	}).catch(function(error) {
+	  // Handle error
+	});
 	setTimer();
 }
 
