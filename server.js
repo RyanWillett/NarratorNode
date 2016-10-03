@@ -119,6 +119,7 @@ var app = express();
 var port = process.env.PORT || 3000;
 
 app.use(express.static(__dirname + "/public"));
+app.use(express.static(__dirname + "/public"));
 
 var server = http.createServer(app);
 server.listen(port);
@@ -175,7 +176,6 @@ function checkSessionToken(o, ws, done){
 
 
   firebase.auth().verifyIdToken(o.sessionID).then(function(decodedToken){
-    console.log('VALID TOKEN!');
     var name = decodedToken.name;
     var priorMapping = connections_mapping[name];
     if(priorMapping){
@@ -205,7 +205,6 @@ wss.on("connection", function(ws) {
     //console.log('web -> heroku : ' + message);
     try{
       o = JSON.parse(message);
-      console.log(o);
       if(!o.name){
         o.name = generateName();
         message = JSON.stringify(o);
@@ -214,7 +213,6 @@ wss.on("connection", function(ws) {
 
       if(!validated){
         if(validating){
-          console.log('pushing message');
           unvalidated_messages.push(o);
           return;
         }
@@ -227,7 +225,6 @@ wss.on("connection", function(ws) {
         checkSessionToken(o, ws, function(name_for_token){
           name = name_for_token;
           validated = true;
-          console.log('was valiated');
           for(var i = 0; i < unvalidated_messages.length; i++){
            cleanMessage(o, name_for_token, JSON.stringify(o));
           }
@@ -366,7 +363,7 @@ function initializeSlackBot(apiToken, instanceID){
 
   function sendSlackMessage(){
     var remove = true;
-    if(slackInstance.messages.length != 0){
+    if(slackInstance.messages.length !== 0){
       var message = slackInstance.messages[0];
       try{
         if(message.recipient !== "narrator"){

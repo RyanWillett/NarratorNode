@@ -14,6 +14,7 @@ var main = document.getElementById("main");
 var login_page = document.getElementById("login_page");
 var setup_page = document.getElementById("setup_page");
 var lobby_page = document.getElementById("lobby_page");
+var isMobile = window.location.href.indexOf("mobile") !== -1;
 
 var user = null;
 var gameState={};
@@ -1094,13 +1095,14 @@ function connect(){
 	});
 }
 
+var user_o;
 firebase.auth().onAuthStateChanged(function(user_o){
 	if(user_o && user === null){//to ensure that we're not initiating a websocket a million times
 		user = user_o;
 		connect();
 		
 
-	}else if (user_o === null){
+	}else if (!user_o){
 		login_page.hidden = false;
 		lobby_page.hidden = true;
 		setup_page.hidden = true;

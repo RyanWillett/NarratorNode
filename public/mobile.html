@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta http-equiv="Content-type" content="text/html; charset=UTF-8" />
-  <title>The Narrator</title>
+  <title>The Narrator (Mobile)</title>
   
   <meta name="description" content="Description" />
   <meta name="keywords" content="Keywords" />
@@ -17,8 +17,7 @@
   <meta name="theme-color" content="#ffffff">
 
   <style type="text/css" media="all">@import "css/index.css";</style> 
-  <script src="js/jquery.js"></script>
-  <script src="js/redirect.js"></script>
+  <style type="text/css" media="all">@import "css/mobile.css";</style>
 </head>
 
 
@@ -44,7 +43,7 @@
 
       <div id='timer'>0:00</div>
       
-      <button id="logoutButton">Logout</button>
+      <button id="logoutButtonMobile">Logout</button>
 
     </nav>
     <div class="roleCard trim">
@@ -146,16 +145,17 @@
   </div>
 
   <div id="lobby_page" hidden>
+    <button id="logoutButton" class='lobby_buttons'>Logout</button>
     <div id="global_players_menu_pane">
-      <span class="trim lobby_player_header">Global Chat</span>
-      <ul id="global_players_list">
-      
-      </ul>
+      <span class="trim lobby_player_header" hidden>Global Chat</span>
+      <ul hidden id="global_players_list"></ul>
     </div>
-    <button id="joinButton" class='lobby_buttons'>Join Public</button>
-    <button id="joinPrivateButton" class='lobby_buttons'>Join Private</button>
-    <button id="hostPublicButton" class='lobby_buttons'>Host Public</button>
-    <form><input id='host_name_input' placeholder='host name' input="text"></form>
+    <button id="joinButton" class='lobby_buttons'>Join</button>
+    <button id="joinButton" class='lobby_buttons'>Join</button>
+    <button id="joinPrivateButton" class='lobby_buttons'>Roles</button>
+    <button id="hostPublicButton" class='lobby_buttons'>Host</button>
+    <button id="tutorialButton" class='lobby_buttons'>Tutorial</button>
+    <form><input hidden id='host_name_input' placeholder='host name' input="text"></form>
     <ul class='chat' id="lobby_messages">
     </ul>
     <form>
@@ -166,8 +166,8 @@
   </div>
 
   <div id="login_page" hidden>
-    <h1>The Narrator</h1>
-    <h2>Mafia</h2>
+    <h1 hidden>The Narrator</h1>
+    <h2 hidden>Mafia</h2>
     <input id="username_field" type="text" name="u" placeholder="Username" required="required" />
     <br/>
     <input id="password_field" type="password" name="p" placeholder="Password" required="required" />
@@ -192,8 +192,10 @@
 
 
   
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
   <script src="js/firebase.js"></script>
   <script src="js/index.js"></script>
+  <script src="js/mobile.js"></script>
   <audio hidden id="newChatMessageAudio" src="hearbeat.mp3"></audio>
   <audio hidden id="ping" src="ping.mp3"></audio>
 </body>

@@ -1,0 +1,53 @@
+body { 
+    background: url('../mainscreen.png') no-repeat center center fixed; 
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+}
+
+.lobby_buttons{
+	position: fixed;
+	padding-top: 14px;
+	padding-bottom: 14px;
+	padding-right: 25px;
+	padding-left: 25px;
+	background-color: white;
+	font-size: 30px;
+	font-family: listFont;
+}
+
+#joinButton{
+	right: 20%;
+	bottom: 215px;
+}
+
+#hostPublicButton{
+	left: 20%;
+	bottom: 215px;
+}
+
+#joinPrivateButton{
+	left: 20%;
+}
+
+#tutorialButton{
+	right: 16%;
+	bottom: 105px;
+}
+
+#logoutButton{
+	font-size: 15px;
+	padding-top: 7px;
+	padding-bottom: 7px;
+	padding-right: 14px;
+	padding-left: 14px;
+}
+
+#lobby_messages{
+	max-width: 0px;
+}
+
+#login_page{
+    top: 60%;
+}
