@@ -73,6 +73,7 @@ public class Instance implements NarratorListener{
         webUsers = new PlayerList();
         slackPlayers = new PlayerList();
         slackMap = new HashMap<>();
+        th = new SwitchHandler(n, slackPlayers, this);
 	}
 	
 	public void removePlayer(NodePlayer leaver) throws JSONException {
@@ -155,7 +156,7 @@ public class Instance implements NarratorListener{
     	
     	//th is initialized first because if the game is started, a message will be sent out
     	//instance will not quite be set yet, and throw null pointers
-		th = new SwitchHandler(n, slackPlayers, this);
+		
 		n.startGame();
 		
 
@@ -549,6 +550,7 @@ public class Instance implements NarratorListener{
     		return;
 		}
     	
+    	
     	if(host == p && !n.isInProgress()){
     		if(message.equals(StateObject.addRole)){
     			String color = jo.getString(StateObject.roleColor);
@@ -687,6 +689,11 @@ public class Instance implements NarratorListener{
     		}
 		}
 
+    	if(message.startsWith("say null -prefer ".toLowerCase())){
+    		th.prefer(p, message.toLowerCase().replace("say null -prefer ".toLowerCase(), ""));
+    		return;
+    	}
+    	
     	if(message.equals(StateObject.leaveGame)){
     		np.leaveGame();
     		return;
@@ -716,6 +723,7 @@ public class Instance implements NarratorListener{
     	
 		
 	}
+
 	public void onGameStart() {
 		startTimer();
 		sendGameState();
