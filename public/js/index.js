@@ -182,7 +182,7 @@ function setRegularRules(){
 	});
 }
 
-J.MAX_RULES = 5;
+J.MAX_RULES = 6;
 gameState.activeRule = null;
 
 function setActiveRule(newRule){

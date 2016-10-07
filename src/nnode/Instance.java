@@ -633,6 +633,10 @@ public class Instance implements NarratorListener{
     				inputJRule = jo.getJSONObject(t.getColor() + "identity");
     				valb = inputJRule.getBoolean("val");
     				t.setKnowsTeam(valb);
+
+    				inputJRule = jo.getJSONObject(t.getColor() + "godfather");
+    				valb = inputJRule.getBoolean("val");
+    				t.setGodfatherStatus(valb);
     				
     				inputJRule = jo.getJSONObject(t.getColor() + "liveToWin");
     				valb = inputJRule.getBoolean("val");
