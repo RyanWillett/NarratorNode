@@ -57,6 +57,7 @@ J.showButton = "showButton";
 J.endedNight = "endedNight";
 
 J.graveYard = "graveYard";
+J.activeTeams = "activeTeams";
 
 J.isHost = "isHost";
 J.addRole = "addRole";
@@ -439,7 +440,11 @@ function setGraveYard(graveYard_o){
 
 function setFrame(){
 	var fSpinner = $("#frameChoiceSpinner");
-	if(gameState.playerLists[J.type][gameState.commandsIndex] === 'Frame' && gameState.isAlive){
+	var command = gameState.playerLists[J.type][gameState.commandsIndex];
+
+	if((command === 'Frame' || command === 'Spy') && gameState.isAlive && !gameState.isDay){
+
+
 		fSpinner.show();
 		fSpinner.unbind();
 		fSpinner.change(function(){
@@ -475,8 +480,8 @@ function refreshPlayers(){
 		gameState.visiblePlayers = [];
 	if(gameState.isDay && gameState.isAlive)
 		gameState.visiblePlayers.push({playerName:"Skip Day", playerActive: true, playerVote: gameState.skipVote, playerSelected: gameState.isSkipping});
-	else
-		setFrame();
+	
+	setFrame();
 
 	setCommandsLabel(playerListType);
 	
@@ -567,6 +572,8 @@ function sendAction(target, name){
 			message = "skip day";
 		if(command === "Frame"){
 			message += (" " + $("#frameChoiceSpinner").val());
+		}else if(command === 'Spy'){
+			message = "spy " + $("#frameChoiceSpinner").val();
 		}
 	}
 	web_send({message: message});
@@ -896,8 +903,10 @@ function handleObject(object){
 			gameState.isObserver = object[J.isObserver];
 		if(object[J.gameID] !== undefined){
 			gameState.gameID = object[J.gameID];
-			console.log(gameState.gameID);
 			setGameID();
+		}
+		if(object[J.activeTeams]){
+			gameState.activeTeams = object[J.activeTeams];
 		}
 
 		if(hasType(J.rules, object.type)){

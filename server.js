@@ -205,7 +205,7 @@ wss.on("connection", function(ws) {
     //console.log('web -> heroku : ' + message);
     try{
       o = JSON.parse(message);
-      console.log(o);
+      //console.log(o);
       if(!o.name){
         o.name = generateName();
         message = JSON.stringify(o);
@@ -271,7 +271,7 @@ function cleanMessage(o, name, message){
     saveAndroidToken(o.name, o.token);
   }
   if(o.message.length !== 0){
-    console.log(o);
+    //console.log(o);
     pipe_write(message);
   }
 }
