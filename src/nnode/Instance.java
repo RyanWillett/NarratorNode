@@ -40,7 +40,7 @@ import shared.roles.Blocker;
 import shared.roles.CultLeader;
 import shared.roles.Driver;
 import shared.roles.MassMurderer;
-import shared.roles.RandomRole;
+import shared.roles.RandomMember;
 import shared.roles.Role;
 import shared.roles.SerialKiller;
 
@@ -344,7 +344,7 @@ public class Instance implements NarratorListener{
 			Faction randFac = fManager.getFaction(Constants.A_RANDOM);
 			ArrayList<RoleTemplate> list = new ArrayList<>();
 			
-			RandomRole r = new RandomRole(f.getName() + " Random", f.getColor());
+			RandomMember r = new RandomMember(f.getName() + " Random", f.getColor());
 			for(RoleTemplate m: f.members){
 				if(!m.isRandom()){
 					r.addMember((Member) m);
@@ -357,7 +357,7 @@ public class Instance implements NarratorListener{
 			Faction randFac = fManager.getFaction(Constants.A_RANDOM);
 			for(RoleTemplate rt: randFac.members){
 				if(rt.isRandom()){
-					RandomRole rr = (RandomRole) rt;
+					RandomMember rr = (RandomMember) rt;
 					if(rr.getName().equals(f.getName() + " Random")){
 						rr.addMember(newMember);
 						break;
@@ -563,28 +563,28 @@ public class Instance implements NarratorListener{
     				RoleTemplate rr = null;
     				switch(role_name){
     				case Constants.TOWN_RANDOM_ROLE_NAME:
-    					rr = RandomRole.TownRandom();
+    					rr = RandomMember.TownRandom();
     					break;
     				case Constants.TOWN_PROTECTIVE_ROLE_NAME:
-    					rr = RandomRole.TownProtective();
+    					rr = RandomMember.TownProtective();
     					break;
     				case Constants.TOWN_INVESTIGATIVE_ROLE_NAME:
-    					rr = RandomRole.TownInvestigative();
+    					rr = RandomMember.TownInvestigative();
     					break;
     				case Constants.TOWN_KILLING_ROLE_NAME:
-    					rr = RandomRole.TownKilling();
+    					rr = RandomMember.TownKilling();
     					break;
     				case Constants.YAKUZA_RANDOM_ROLE_NAME:
-    					rr = RandomRole.YakuzaRandom();
+    					rr = RandomMember.YakuzaRandom();
     					break;
     				case Constants.MAFIA_RANDOM_ROLE_NAME:
-    					rr = RandomRole.MafiaRandom();
+    					rr = RandomMember.MafiaRandom();
     					break;
     				case Constants.NEUTRAL_RANDOM_ROLE_NAME:
-    					rr = RandomRole.NeutralRandom();
+    					rr = RandomMember.NeutralRandom();
     					break;
     				case Constants.ANY_RANDOM_ROLE_NAME:
-    					rr = RandomRole.AnyRandom();
+    					rr = RandomMember.AnyRandom();
     					break;
     				}
     				if(rr != null)
